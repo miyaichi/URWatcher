@@ -90,6 +90,13 @@ docker compose run --rm urwatcher pytest
 
 ---
 
+## 📝 運用メモ
+- 初回 `--run` は全エリアを巡回するため時間が掛かりますが、以降はエリアページのハッシュを元に更新があったエリアのみスクレイプします（変更が無ければ `No new rooms detected` が表示されます）
+- 全エリアを再スキャンしたい場合は `sqlite3 data/urwatcher.db "DELETE FROM area_snapshots;"` を実行後に `--run` してください
+- 対象エリアを絞りたいときは `TARGET_URL` を個別のエリアページに設定すると高速に確認できます
+
+---
+
 ## 📈 アーキテクチャ概要
 ```
 [UR公式サイト] → [Scraper] → [差分比較] → [SQLite DB] → [通知(Slack)]
