@@ -6,10 +6,11 @@ import html
 import logging
 import re
 from dataclasses import dataclass
-from typing import Iterable, List, Sequence
+from typing import Iterable, List, Sequence, Set
 from urllib.parse import urljoin
 
 import requests
+from bs4 import BeautifulSoup
 
 from .models import Listing, PropertySnapshot, Room
 
@@ -118,7 +119,21 @@ def scrape_properties(target_url: str, timeout: int = 20) -> List[PropertySnapsh
     if not response.encoding or response.encoding.lower() == "iso-8859-1":
         response.encoding = response.apparent_encoding or "utf-8"
 
-    context = _parse_area_context(response.text, target_url)
+    try:
+        context = _parse_area_context(response.text, target_url)
+    except ValueError:
+        area_links = _extract_area_links(response.text, target_url)
+        if not area_links:
+            raise
+        logger.debug(
+            "Discovered %d area links on %s; aggregating room data from each",
+            len(area_links),
+            target_url,
+        )
+        snapshots: List[PropertySnapshot] = []
+        for area_url in sorted(area_links):
+            snapshots.extend(scrape_properties(area_url, timeout=timeout))
+        return snapshots
     client = URApiClient(context=context)
 
     snapshots: List[PropertySnapshot] = []
@@ -188,6 +203,20 @@ def _parse_area_context(html_text: str, referer: str) -> AreaContext:
         area_codes=area_codes,
         referer=referer,
     )
+
+
+def _extract_area_links(html_text: str, base_url: str) -> Set[str]:
+    """Extract unique area detail links from a list page."""
+    soup = BeautifulSoup(html_text, "html.parser")
+    links: Set[str] = set()
+    for anchor in soup.find_all("a", href=True):
+        href = anchor["href"]
+        if "/area/" not in href or not href.endswith(".html"):
+            continue
+        absolute = urljoin(base_url, href)
+        links.add(absolute)
+    links.discard(base_url)
+    return links
 
 
 def _build_listing(row: dict) -> Listing:
