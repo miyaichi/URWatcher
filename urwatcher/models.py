@@ -94,3 +94,14 @@ class RunSummary:
     executed_at: str
     property_diff: DiffResult[Listing, ListingRecord]
     room_diffs: Dict[str, DiffResult[Room, RoomRecord]]
+
+
+@dataclass
+class AreaSnapshot:
+    """Cached metadata for an area page to avoid unnecessary crawls."""
+
+    area_url: str
+    content_hash: str
+    etag: str | None
+    last_modified: str | None
+    fetched_at: str

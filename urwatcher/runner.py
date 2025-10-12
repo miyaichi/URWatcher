@@ -30,7 +30,7 @@ class URWatcherRunner:
 
     database: Database
     target_url: str
-    scraper: Callable[[str], List[PropertySnapshot]] = field(
+    scraper: Callable[[Database, str], List[PropertySnapshot]] = field(
         default_factory=lambda: scrape_properties
     )
 
@@ -45,7 +45,7 @@ class URWatcherRunner:
         executed_at = dt.datetime.utcnow().isoformat()
 
         try:
-            snapshots = self.scraper(self.target_url)
+            snapshots = self.scraper(self.database, self.target_url)
             logger.info(
                 "Scraped %d properties from %s", len(snapshots), self.target_url
             )

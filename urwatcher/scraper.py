@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import html
 import logging
 import re
@@ -12,6 +13,7 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
+from .db import Database
 from .models import Listing, PropertySnapshot, Room
 
 logger = logging.getLogger(__name__)
@@ -110,7 +112,9 @@ class URApiClient:
         return payload
 
 
-def scrape_properties(target_url: str, timeout: int = 20) -> List[PropertySnapshot]:
+def scrape_properties(
+    database: Database, target_url: str, timeout: int = 20
+) -> List[PropertySnapshot]:
     """Scrape property snapshots (including room inventories) for the given area page."""
     logger.debug("Fetching area page %s", target_url)
     response = requests.get(target_url, timeout=timeout)
@@ -118,6 +122,12 @@ def scrape_properties(target_url: str, timeout: int = 20) -> List[PropertySnapsh
 
     if not response.encoding or response.encoding.lower() == "iso-8859-1":
         response.encoding = response.apparent_encoding or "utf-8"
+
+    content_hash = _hash_text(response.text)
+    etag = response.headers.get("ETag")
+    last_modified = response.headers.get("Last-Modified")
+    snapshot = database.get_area_snapshot(target_url)
+    area_changed = not snapshot or snapshot.content_hash != content_hash
 
     try:
         context = _parse_area_context(response.text, target_url)
@@ -138,9 +148,19 @@ def scrape_properties(target_url: str, timeout: int = 20) -> List[PropertySnapsh
                 len(area_links),
                 area_url,
             )
-            snapshots.extend(scrape_properties(area_url, timeout=timeout))
+            snapshots.extend(scrape_properties(database, area_url, timeout=timeout))
         return snapshots
     client = URApiClient(context=context)
+
+    if snapshot and not area_changed:
+        logger.info(
+            "Area page %s unchanged since %s; performing lightweight property probe",
+            target_url,
+            snapshot.fetched_at,
+        )
+        _quick_property_probe(client)
+        database.upsert_area_snapshot(target_url, content_hash, etag, last_modified)
+        return []
 
     snapshots: List[PropertySnapshot] = []
     page_index = 0
@@ -181,6 +201,7 @@ def scrape_properties(target_url: str, timeout: int = 20) -> List[PropertySnapsh
         total_properties,
         page_index,
     )
+    database.upsert_area_snapshot(target_url, content_hash, etag, last_modified)
     return snapshots
 
 
@@ -223,6 +244,19 @@ def _extract_area_links(html_text: str, base_url: str) -> Set[str]:
         links.add(absolute)
     links.discard(base_url)
     return links
+
+
+def _hash_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _quick_property_probe(client: URApiClient) -> None:
+    payload = client.property_payload(page_index=0, page_size=10)
+    rows = client.post("bukken/result/bukken_result/", payload)
+    logger.info(
+        "Lightweight probe fetched %d property rows (page 0)",
+        len(rows),
+    )
 
 
 def _build_listing(row: dict) -> Listing:

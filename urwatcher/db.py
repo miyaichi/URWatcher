@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import sqlite3
+import datetime as dt
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, Tuple
+from typing import Dict, Iterable, Optional, Tuple
 
-from .models import DiffResult, Listing, ListingRecord, Room, RoomRecord
+from .models import AreaSnapshot, DiffResult, Listing, ListingRecord, Room, RoomRecord
 
 
 SQLITE_PREFIX = "sqlite://"
@@ -111,6 +112,17 @@ class Database:
                     occurred_at TEXT NOT NULL,
                     details TEXT,
                     FOREIGN KEY(room_id) REFERENCES rooms(room_id)
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS area_snapshots (
+                    area_url TEXT PRIMARY KEY,
+                    content_hash TEXT NOT NULL,
+                    etag TEXT,
+                    last_modified TEXT,
+                    fetched_at TEXT NOT NULL
                 )
                 """
             )
@@ -412,4 +424,44 @@ class Database:
                     ),
                 )
 
+            conn.commit()
+
+    def get_area_snapshot(self, area_url: str) -> Optional[AreaSnapshot]:
+        with self.connect() as conn:
+            cursor = conn.execute(
+                "SELECT area_url, content_hash, etag, last_modified, fetched_at FROM area_snapshots WHERE area_url = ?",
+                (area_url,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return AreaSnapshot(
+                area_url=row[0],
+                content_hash=row[1],
+                etag=row[2],
+                last_modified=row[3],
+                fetched_at=row[4],
+            )
+
+    def upsert_area_snapshot(
+        self,
+        area_url: str,
+        content_hash: str,
+        etag: str | None,
+        last_modified: str | None,
+    ) -> None:
+        fetched_at = dt.datetime.utcnow().isoformat()
+        with self.connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO area_snapshots (area_url, content_hash, etag, last_modified, fetched_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(area_url) DO UPDATE SET
+                    content_hash=excluded.content_hash,
+                    etag=excluded.etag,
+                    last_modified=excluded.last_modified,
+                    fetched_at=excluded.fetched_at
+                """,
+                (area_url, content_hash, etag, last_modified, fetched_at),
+            )
             conn.commit()

@@ -9,7 +9,7 @@ def build_runner(tmp_path, scraper=None) -> URWatcherRunner:
     runner = URWatcherRunner(
         database=database,
         target_url="https://example.com",
-        scraper=scraper or (lambda url: []),
+        scraper=scraper or (lambda db, url: []),
     )
     runner.init()
     return runner
@@ -50,7 +50,7 @@ def test_runner_records_dry_run_without_persisting(tmp_path):
     snapshots = [
         make_snapshot("A", [make_room("A", "101")]),
     ]
-    runner = build_runner(tmp_path, scraper=lambda url: snapshots)
+    runner = build_runner(tmp_path, scraper=lambda db, url: snapshots)
     summary = runner.run(dry_run=True)
 
     assert summary.property_diff.added == [snapshots[0].listing]
@@ -74,7 +74,7 @@ def test_runner_persists_added_and_removed(tmp_path):
         make_snapshot("B", [make_room("B", "201")]),
     ]
 
-    runner = build_runner(tmp_path, scraper=lambda url: snapshots_round_one)
+    runner = build_runner(tmp_path, scraper=lambda db, url: snapshots_round_one)
     runner.run()
 
     stored = runner.database.fetch_listings(active_only=True)
@@ -85,7 +85,7 @@ def test_runner_persists_added_and_removed(tmp_path):
         make_snapshot("C", [make_room("C", "301")]),
     ]
 
-    runner.scraper = lambda url: snapshots_round_two
+    runner.scraper = lambda db, url: snapshots_round_two
     runner.run()
 
     listings = runner.database.fetch_listings(active_only=False)
