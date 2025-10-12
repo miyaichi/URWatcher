@@ -1,7 +1,7 @@
-import os
 from pathlib import Path
 
 from urwatcher.db import Database, resolve_sqlite_path
+from urwatcher.models import DiffResult, Listing
 
 
 def test_resolve_sqlite_path_handles_relative(tmp_path, monkeypatch):
@@ -17,3 +17,23 @@ def test_database_initializes_schema(tmp_path):
 
     assert db_path.exists()
     assert db_path.stat().st_size > 0
+
+
+def test_apply_changes_adds_and_removes_listings(tmp_path):
+    db = Database(path=tmp_path / "urwatcher.db")
+    db.initialize()
+
+    listing = Listing(property_id="123", name="Sample", url="https://example.com/123.html")
+    diff_add = DiffResult(added=[listing], removed=[], unchanged=[])
+
+    db.apply_changes(executed_at="2025-01-01T00:00:00", diff=diff_add)
+
+    records = db.fetch_listings(active_only=False)
+    assert "123" in records
+    assert records["123"].active is True
+
+    diff_remove = DiffResult(added=[], removed=[records["123"]], unchanged=[])
+    db.apply_changes(executed_at="2025-01-02T00:00:00", diff=diff_remove)
+
+    updated = db.fetch_listings(active_only=False)["123"]
+    assert updated.active is False

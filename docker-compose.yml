@@ -1,0 +1,15 @@
+services:
+  urwatcher:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    entrypoint: ["python", "monitor_ur.py"]
+    command: ["--run"]
+    environment:
+      - SLACK_WEBHOOK=${SLACK_WEBHOOK:-dummy}
+      - TARGET_URL=${TARGET_URL:-https://www.ur-net.go.jp/chintai/kanto/tokyo/list/}
+      - DATABASE_URL=sqlite:///data/urwatcher.db
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    tty: true
