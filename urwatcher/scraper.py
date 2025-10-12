@@ -20,6 +20,9 @@ def scrape_listings(target_url: str, timeout: int = 20) -> List[Listing]:
     response = requests.get(target_url, timeout=timeout)
     response.raise_for_status()
 
+    if not response.encoding or response.encoding.lower() == "iso-8859-1":
+        response.encoding = response.apparent_encoding or "utf-8"
+
     soup = BeautifulSoup(response.text, "html.parser")
     anchors = soup.find_all("a")
 
