@@ -232,10 +232,9 @@ def _parse_area_context(html_text: str, referer: str) -> AreaContext:
         raise ValueError("Could not locate initSearch parameters in area page.")
 
     params = match.group("params")
-    area_codes = re.findall(r"skcs'\s*:\s*'([^']+)'", params)
+    area_codes = re.findall(r"'?skcs'?\s*:\s*'([^']+)'", params)
     if not area_codes:
-        # fallback for double quotes
-        area_codes = re.findall(r'skcs"\s*:\s*"([^"]+)"', params)
+        area_codes = re.findall(r'"?skcs"?\s*:\s*"([^"]+)"', params)
     if not area_codes:
         raise ValueError("Area codes (skcs) could not be identified.")
 
