@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="skip network requests and write a placeholder log entry",
+        help="skip persistence updates while still performing scraping and diffing",
     )
     parser.add_argument(
         "--target-url",
@@ -62,7 +62,30 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return 1
 
-    runner.run(dry_run=args.dry_run)
+    summary = runner.run(dry_run=args.dry_run)
+
+    new_rooms = [
+        room
+        for diff in summary.room_diffs.values()
+        for room in diff.added
+    ]
+    if new_rooms:
+        logger.info("New room availability detected (%d):", len(new_rooms))
+        for room in new_rooms:
+            logger.info(
+                "%s | %s %s | 家賃: %s (共益費: %s) | %s / %s | %s | %s",
+                room.property_name,
+                room.building_name,
+                room.room_number,
+                room.rent or "N/A",
+                room.common_fee or "N/A",
+                room.layout or "N/A",
+                room.floor_area or "N/A",
+                room.floor or "N/A",
+                room.room_url,
+            )
+    else:
+        logger.info("No new rooms detected in this run.")
     return 0
 
 
