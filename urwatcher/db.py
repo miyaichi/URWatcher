@@ -83,8 +83,8 @@ class Database:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS rooms (
-                    room_id TEXT PRIMARY KEY,
                     property_id TEXT NOT NULL,
+                    room_id TEXT NOT NULL,
                     property_name TEXT NOT NULL,
                     property_url TEXT NOT NULL,
                     building_name TEXT NOT NULL,
@@ -98,7 +98,8 @@ class Database:
                     first_seen TEXT NOT NULL,
                     last_seen TEXT NOT NULL,
                     active INTEGER NOT NULL DEFAULT 1,
-                    FOREIGN KEY(property_id) REFERENCES listings(property_id)
+                    FOREIGN KEY(property_id) REFERENCES listings(property_id),
+                    PRIMARY KEY(property_id, room_id)
                 )
                 """
             )
@@ -111,7 +112,7 @@ class Database:
                     event_type TEXT NOT NULL,
                     occurred_at TEXT NOT NULL,
                     details TEXT,
-                    FOREIGN KEY(room_id) REFERENCES rooms(room_id)
+                    FOREIGN KEY(property_id, room_id) REFERENCES rooms(property_id, room_id)
                 )
                 """
             )
@@ -315,7 +316,7 @@ class Database:
                         SET property_name = ?, property_url = ?, building_name = ?, room_number = ?,
                             rent = ?, common_fee = ?, layout = ?, floor_area = ?, floor = ?,
                             room_url = ?, last_seen = ?, active = 1
-                        WHERE room_id = ?
+                        WHERE property_id = ? AND room_id = ?
                         """,
                         (
                             room.property_name,
@@ -329,6 +330,7 @@ class Database:
                             room.floor,
                             room.room_url,
                             executed_at,
+                            room.property_id,
                             room.room_id,
                         ),
                     )
@@ -338,15 +340,15 @@ class Database:
                     conn.execute(
                         """
                         INSERT INTO rooms (
-                            room_id, property_id, property_name, property_url, building_name,
+                            property_id, room_id, property_name, property_url, building_name,
                             room_number, rent, common_fee, layout, floor_area, floor, room_url,
                             first_seen, last_seen, active
                         )
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
                         """,
                         (
-                            room.room_id,
                             room.property_id,
+                            room.room_id,
                             room.property_name,
                             room.property_url,
                             room.building_name,
@@ -381,9 +383,9 @@ class Database:
                     """
                     UPDATE rooms
                     SET active = 0, last_seen = ?
-                    WHERE room_id = ?
+                    WHERE property_id = ? AND room_id = ?
                     """,
-                    (executed_at, record.room_id),
+                    (executed_at, record.property_id, record.room_id),
                 )
                 conn.execute(
                     """
@@ -406,7 +408,7 @@ class Database:
                     SET property_name = ?, property_url = ?, building_name = ?, room_number = ?,
                         rent = ?, common_fee = ?, layout = ?, floor_area = ?, floor = ?,
                         room_url = ?, last_seen = ?, active = 1
-                    WHERE room_id = ?
+                    WHERE property_id = ? AND room_id = ?
                     """,
                     (
                         room.property_name,
@@ -420,6 +422,7 @@ class Database:
                         room.floor,
                         room.room_url,
                         executed_at,
+                        room.property_id,
                         room.room_id,
                     ),
                 )
