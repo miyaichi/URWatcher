@@ -125,13 +125,19 @@ def scrape_properties(target_url: str, timeout: int = 20) -> List[PropertySnapsh
         area_links = _extract_area_links(response.text, target_url)
         if not area_links:
             raise
-        logger.debug(
-            "Discovered %d area links on %s; aggregating room data from each",
+        logger.info(
+            "List page detected; scanning %d area pages beneath %s",
             len(area_links),
             target_url,
         )
         snapshots: List[PropertySnapshot] = []
-        for area_url in sorted(area_links):
+        for idx, area_url in enumerate(sorted(area_links), start=1):
+            logger.info(
+                "Scanning area %d/%d: %s",
+                idx,
+                len(area_links),
+                area_url,
+            )
             snapshots.extend(scrape_properties(area_url, timeout=timeout))
         return snapshots
     client = URApiClient(context=context)
