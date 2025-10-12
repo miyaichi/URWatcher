@@ -170,3 +170,40 @@ def test_scrape_properties_skips_when_area_unchanged(monkeypatch, tmp_path):
     assert second == []
     assert call_count["property"] == 2
     assert call_count["room"] == 1
+
+
+def test_scrape_properties_avoids_recursion(monkeypatch, tmp_path):
+    list_url = "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/101.html"
+    other_url = "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/102.html"
+
+    html_list = """
+    <html><body>
+        <a href="/chintai/kanto/tokyo/area/102.html">Area 102</a>
+    </body></html>
+    """
+    html_other = """
+    <html><body>
+        <a href="/chintai/kanto/tokyo/area/101.html">Area 101</a>
+    </body></html>
+    """
+
+    responses = {
+        list_url: DummyResponse(html_list),
+        other_url: DummyResponse(html_other),
+    }
+
+    def fake_get(url, timeout):
+        return responses[url]
+
+    monkeypatch.setattr("requests.get", fake_get)
+
+    database = Database(path=tmp_path / "avoid.db")
+    database.initialize()
+    monkeypatch.setattr("urwatcher.scraper.URApiClient.post", lambda self, ep, data: [])
+    monkeypatch.setattr(
+        "urwatcher.scraper._parse_area_context",
+        lambda text, url: (_ for _ in ()).throw(ValueError()),
+    )
+
+    # Ensure recursion terminates without error
+    assert scrape_properties(database, list_url) == []

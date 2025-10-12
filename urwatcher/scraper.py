@@ -113,9 +113,19 @@ class URApiClient:
 
 
 def scrape_properties(
-    database: Database, target_url: str, timeout: int = 20
+    database: Database,
+    target_url: str,
+    timeout: int = 20,
+    visited: Set[str] | None = None,
 ) -> List[PropertySnapshot]:
     """Scrape property snapshots (including room inventories) for the given area page."""
+    if visited is None:
+        visited = set()
+    if target_url in visited:
+        logger.debug("Skipping already-visited URL %s to avoid loops", target_url)
+        return []
+    visited.add(target_url)
+
     logger.debug("Fetching area page %s", target_url)
     response = requests.get(target_url, timeout=timeout)
     response.raise_for_status()
@@ -148,7 +158,14 @@ def scrape_properties(
                 len(area_links),
                 area_url,
             )
-            snapshots.extend(scrape_properties(database, area_url, timeout=timeout))
+            snapshots.extend(
+                scrape_properties(
+                    database,
+                    area_url,
+                    timeout=timeout,
+                    visited=visited,
+                )
+            )
         return snapshots
     client = URApiClient(context=context)
 
