@@ -144,7 +144,12 @@ def scrape_properties(
     except ValueError:
         area_links = _extract_area_links(response.text, target_url)
         if not area_links:
-            raise
+            logger.info(
+                "No initSearch parameters found for %s; treating as zero-availability page",
+                target_url,
+            )
+            database.upsert_area_snapshot(target_url, content_hash, etag, last_modified)
+            return []
         logger.info(
             "List page detected; scanning %d area pages beneath %s",
             len(area_links),
@@ -187,7 +192,16 @@ def scrape_properties(
         payload = client.property_payload(
             page_index=page_index, page_size=DEFAULT_PAGE_SIZE
         )
-        property_rows = client.post("bukken/result/bukken_result/", payload)
+        try:
+            property_rows = client.post("bukken/result/bukken_result/", payload)
+        except requests.HTTPError as exc:  # type: ignore[attr-defined]
+            logger.warning(
+                "Property fetch failed for %s (page %d): %s",
+                target_url,
+                page_index,
+                exc,
+            )
+            break
         if not property_rows:
             break
 

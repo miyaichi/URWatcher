@@ -1,5 +1,7 @@
 from typing import Optional
 
+import requests
+
 from urwatcher.db import Database
 from urwatcher.scraper import _extract_area_links, scrape_properties
 
@@ -207,3 +209,44 @@ def test_scrape_properties_avoids_recursion(monkeypatch, tmp_path):
 
     # Ensure recursion terminates without error
     assert scrape_properties(database, list_url) == []
+
+
+def test_scrape_properties_handles_page_without_init(monkeypatch, tmp_path):
+    url = "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/000.html"
+    html = "<html><body><p>No data</p></body></html>"
+
+    monkeypatch.setattr("requests.get", lambda target, timeout: DummyResponse(html))
+
+    database = Database(path=tmp_path / "noinit.db")
+    database.initialize()
+
+    assert scrape_properties(database, url) == []
+
+
+def test_scrape_properties_handles_api_error(monkeypatch, tmp_path):
+    url = "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/119.html"
+    html = """
+    <html>
+      <head>
+        <script>
+          ur.api.bukken.result.initSearch('kanto','13','tokyo','area',{skcs:'119'});
+        </script>
+      </head>
+      <body></body>
+    </html>
+    """
+
+    monkeypatch.setattr("requests.get", lambda target, timeout: DummyResponse(html))
+
+    def failing_post(self, endpoint, data):
+        response = requests.Response()
+        response.status_code = 500
+        response.url = "https://chintai.r6.ur-net.go.jp/chintai/api/bukken/result/bukken_result/"
+        raise requests.HTTPError("500", response=response)
+
+    monkeypatch.setattr("urwatcher.scraper.URApiClient.post", failing_post)
+
+    database = Database(path=tmp_path / "apierr.db")
+    database.initialize()
+
+    assert scrape_properties(database, url) == []
