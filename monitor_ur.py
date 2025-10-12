@@ -10,6 +10,8 @@ import sys
 from urwatcher.db import Database, resolve_sqlite_path
 from urwatcher.runner import URWatcherRunner
 
+logger = logging.getLogger(__name__)
+
 
 def configure_logging(verbose: bool) -> None:
     level = logging.DEBUG if verbose else logging.INFO
