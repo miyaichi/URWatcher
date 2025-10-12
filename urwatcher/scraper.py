@@ -289,10 +289,32 @@ def _quick_property_probe(client: URApiClient) -> None:
     )
 
 
+def _resolve_listing_url(row: dict) -> str:
+    """Extract the property listing URL path from an API row."""
+    candidate_keys = ("allRoomUrl", "allroomUrl", "allroomurl", "roomLinkPc")
+    for key in candidate_keys:
+        url = row.get(key)
+        if url:
+            return url
+
+    for nested_key in ("room", "kiboRoom"):
+        nested_items = row.get(nested_key) or []
+        if not isinstance(nested_items, list):
+            continue
+        for item in nested_items:
+            if not isinstance(item, dict):
+                continue
+            for key in candidate_keys:
+                url = item.get(key)
+                if url:
+                    return url
+    return ""
+
+
 def _build_listing(row: dict) -> Listing:
     property_id = f"{row['shisya']}_{row['danchi']}_{row['shikibetu']}"
     name = row.get("danchiNm") or property_id
-    url_path = row.get("allRoomUrl") or row.get("roomLinkPc") or ""
+    url_path = _resolve_listing_url(row)
     url = urljoin(UR_BASE, url_path)
     return Listing(property_id=property_id, name=name, url=url)
 

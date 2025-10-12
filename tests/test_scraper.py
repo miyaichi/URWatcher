@@ -3,7 +3,7 @@ from typing import Optional
 import requests
 
 from urwatcher.db import Database
-from urwatcher.scraper import _extract_area_links, scrape_properties
+from urwatcher.scraper import _build_listing, _extract_area_links, scrape_properties
 
 
 class DummyResponse:
@@ -36,6 +36,24 @@ def test_extract_area_links_finds_unique_urls():
         "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/119.html",
         "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/120.html",
     }
+
+
+def test_build_listing_uses_nested_all_room_url():
+    row = {
+        "shisya": "20",
+        "danchi": "225",
+        "shikibetu": "0",
+        "danchiNm": "Nested Danchi",
+        "room": [
+            {
+                "allRoomUrl": "/chintai/kanto/tokyo/20_2250.html",
+                "roomLinkPc": "/chintai/kanto/tokyo/20_2250_room.html?JKSS=0001",
+            }
+        ],
+    }
+
+    listing = _build_listing(row)
+    assert listing.url == "https://www.ur-net.go.jp/chintai/kanto/tokyo/20_2250.html"
 
 
 def test_scrape_properties_handles_list_page(monkeypatch, tmp_path):
@@ -103,10 +121,12 @@ def test_scrape_properties_handles_list_page(monkeypatch, tmp_path):
     assert len(snapshots) == 1
     snapshot = snapshots[0]
     assert snapshot.listing.name == "Test Danchi"
+    assert snapshot.listing.url == "https://www.ur-net.go.jp/chintai/kanto/tokyo/20_2250.html"
     assert len(snapshot.rooms) == 1
     room = snapshot.rooms[0]
     assert room.room_id == "0001"
     assert room.property_id == snapshot.listing.property_id
+    assert room.property_url == snapshot.listing.url
 
 
 def test_scrape_properties_skips_when_area_unchanged(monkeypatch, tmp_path):
