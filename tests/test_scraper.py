@@ -44,6 +44,7 @@ def test_build_listing_uses_nested_all_room_url():
         "danchi": "225",
         "shikibetu": "0",
         "danchiNm": "Nested Danchi",
+        "place": "Test Address",
         "room": [
             {
                 "allRoomUrl": "/chintai/kanto/tokyo/20_2250.html",
@@ -54,6 +55,7 @@ def test_build_listing_uses_nested_all_room_url():
 
     listing = _build_listing(row)
     assert listing.url == "https://www.ur-net.go.jp/chintai/kanto/tokyo/20_2250.html"
+    assert listing.address == "Test Address"
 
 
 def test_scrape_properties_handles_list_page(monkeypatch, tmp_path):
@@ -93,6 +95,7 @@ def test_scrape_properties_handles_list_page(monkeypatch, tmp_path):
                     "danchi": "225",
                     "shikibetu": "0",
                     "danchiNm": "Test Danchi",
+                    "place": "Test Address",
                     "allRoomUrl": "/chintai/kanto/tokyo/20_2250.html",
                     "pageMax": "1",
                 }
@@ -122,6 +125,7 @@ def test_scrape_properties_handles_list_page(monkeypatch, tmp_path):
     snapshot = snapshots[0]
     assert snapshot.listing.name == "Test Danchi"
     assert snapshot.listing.url == "https://www.ur-net.go.jp/chintai/kanto/tokyo/20_2250.html"
+    assert snapshot.listing.address == "Test Address"
     assert len(snapshot.rooms) == 1
     room = snapshot.rooms[0]
     assert room.room_id == "0001"
@@ -158,6 +162,7 @@ def test_scrape_properties_skips_when_area_unchanged(monkeypatch, tmp_path):
                     "danchi": "225",
                     "shikibetu": "0",
                     "danchiNm": "Test Danchi",
+                    "place": "Test Address",
                     "allRoomUrl": "/chintai/kanto/tokyo/20_2250.html",
                     "pageMax": "1",
                 }
@@ -185,6 +190,7 @@ def test_scrape_properties_skips_when_area_unchanged(monkeypatch, tmp_path):
     # First crawl populates snapshot and fetches rooms
     first = scrape_properties(database, area_url)
     assert len(first) == 1
+    assert first[0].listing.address == "Test Address"
     assert call_count == {"property": 1, "room": 1}
 
     # Second crawl should perform only quick probe (no room fetch)

@@ -316,7 +316,24 @@ def _build_listing(row: dict) -> Listing:
     name = row.get("danchiNm") or property_id
     url_path = _resolve_listing_url(row)
     url = urljoin(UR_BASE, url_path)
-    return Listing(property_id=property_id, name=name, url=url)
+    address = _extract_listing_address(row)
+    return Listing(property_id=property_id, name=name, url=url, address=address)
+
+
+def _extract_listing_address(row: dict) -> str:
+    """Best-effort extraction of the listing's address from API payloads."""
+    candidate_keys = (
+        "place",
+        "address",
+        "address1",
+        "address2",
+        "danchiAddress",
+    )
+    for key in candidate_keys:
+        value = row.get(key)
+        if value:
+            return str(value)
+    return ""
 
 
 def _fetch_rooms(

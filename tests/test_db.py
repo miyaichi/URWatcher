@@ -23,7 +23,12 @@ def test_apply_changes_adds_and_removes_listings(tmp_path):
     db = Database(path=tmp_path / "urwatcher.db")
     db.initialize()
 
-    listing = Listing(property_id="123", name="Sample", url="https://example.com/123.html")
+    listing = Listing(
+        property_id="123",
+        name="Sample",
+        url="https://example.com/123.html",
+        address="Sample Address",
+    )
     diff_add = DiffResult(added=[listing], removed=[], unchanged=[])
 
     db.apply_listing_changes(executed_at="2025-01-01T00:00:00", diff=diff_add)
@@ -31,6 +36,7 @@ def test_apply_changes_adds_and_removes_listings(tmp_path):
     records = db.fetch_listings(active_only=False)
     assert "123" in records
     assert records["123"].active is True
+    assert records["123"].address == "Sample Address"
 
     diff_remove = DiffResult(added=[], removed=[records["123"]], unchanged=[])
     db.apply_listing_changes(executed_at="2025-01-02T00:00:00", diff=diff_remove)
@@ -44,13 +50,19 @@ def test_unicode_listing_names_are_preserved(tmp_path):
     db.initialize()
 
     name = "千代田区"
-    listing = Listing(property_id="jp-101", name=name, url="https://example.com/jp-101.html")
+    listing = Listing(
+        property_id="jp-101",
+        name=name,
+        url="https://example.com/jp-101.html",
+        address="千代田区千代田1-1",
+    )
     diff = DiffResult(added=[listing], removed=[], unchanged=[])
 
     db.apply_listing_changes(executed_at="2025-02-01T00:00:00", diff=diff)
 
     stored = db.fetch_listings(active_only=True)["jp-101"]
     assert stored.name == name
+    assert stored.address == "千代田区千代田1-1"
 
 
 def test_apply_room_changes_adds_and_removes_rooms(tmp_path):
@@ -58,7 +70,12 @@ def test_apply_room_changes_adds_and_removes_rooms(tmp_path):
     db.initialize()
 
     # Seed listing for FK constraint.
-    listing = Listing(property_id="P-1", name="Sample", url="https://example.com/property")
+    listing = Listing(
+        property_id="P-1",
+        name="Sample",
+        url="https://example.com/property",
+        address="1 Property Way",
+    )
     db.apply_listing_changes(
         executed_at="2025-03-01T00:00:00",
         diff=DiffResult(added=[listing], removed=[], unchanged=[]),

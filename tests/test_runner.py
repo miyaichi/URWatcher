@@ -37,6 +37,7 @@ def make_snapshot(property_id: str, rooms: list[Room]) -> PropertySnapshot:
         property_id=property_id,
         name=f"Property {property_id}",
         url=f"https://example.com/{property_id}.html",
+        address=f"{property_id} Address",
     )
     return PropertySnapshot(listing=listing, rooms=rooms)
 

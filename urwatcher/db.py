@@ -62,12 +62,19 @@ class Database:
                     property_id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
                     url TEXT NOT NULL,
+                    address TEXT,
                     first_seen TEXT NOT NULL,
                     last_seen TEXT NOT NULL,
                     active INTEGER NOT NULL DEFAULT 1
                 )
                 """
             )
+            columns = {
+                row[1]
+                for row in conn.execute("PRAGMA table_info(listings)")
+            }
+            if "address" not in columns:
+                conn.execute("ALTER TABLE listings ADD COLUMN address TEXT")
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS listing_events (
@@ -148,7 +155,7 @@ class Database:
     def fetch_listings(self, active_only: bool = False) -> Dict[str, ListingRecord]:
         """Return listings keyed by property_id."""
         query = """
-            SELECT property_id, name, url, first_seen, last_seen, active
+            SELECT property_id, name, url, address, first_seen, last_seen, active
             FROM listings
         """
         if active_only:
@@ -162,9 +169,10 @@ class Database:
                     property_id=row[0],
                     name=row[1],
                     url=row[2],
-                    first_seen=row[3],
-                    last_seen=row[4],
-                    active=bool(row[5]),
+                    address=row[3] or "",
+                    first_seen=row[4],
+                    last_seen=row[5],
+                    active=bool(row[6]),
                 )
                 records[record.property_id] = record
             return records
@@ -188,23 +196,30 @@ class Database:
                     conn.execute(
                         """
                         UPDATE listings
-                        SET name = ?, url = ?, last_seen = ?, active = 1
+                        SET name = ?, url = ?, address = ?, last_seen = ?, active = 1
                         WHERE property_id = ?
                         """,
-                        (listing.name, listing.url, executed_at, listing.property_id),
+                        (
+                            listing.name,
+                            listing.url,
+                            listing.address,
+                            executed_at,
+                            listing.property_id,
+                        ),
                     )
                 else:
                     first_seen = executed_at
                     event_type = "added"
                     conn.execute(
                         """
-                        INSERT INTO listings (property_id, name, url, first_seen, last_seen, active)
-                        VALUES (?, ?, ?, ?, ?, 1)
+                        INSERT INTO listings (property_id, name, url, address, first_seen, last_seen, active)
+                        VALUES (?, ?, ?, ?, ?, ?, 1)
                         """,
                         (
                             listing.property_id,
                             listing.name,
                             listing.url,
+                            listing.address,
                             first_seen,
                             executed_at,
                         ),
@@ -239,10 +254,16 @@ class Database:
                 conn.execute(
                     """
                     UPDATE listings
-                    SET name = ?, url = ?, last_seen = ?, active = 1
+                    SET name = ?, url = ?, address = ?, last_seen = ?, active = 1
                     WHERE property_id = ?
                     """,
-                    (listing.name, listing.url, executed_at, listing.property_id),
+                    (
+                        listing.name,
+                        listing.url,
+                        listing.address,
+                        executed_at,
+                        listing.property_id,
+                    ),
                 )
 
             conn.commit()

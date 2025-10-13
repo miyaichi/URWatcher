@@ -13,6 +13,7 @@ class Listing:
     property_id: str
     name: str
     url: str
+    address: str
 
 
 @dataclass
@@ -22,6 +23,7 @@ class ListingRecord:
     property_id: str
     name: str
     url: str
+    address: str
     first_seen: str
     last_seen: str
     active: bool
