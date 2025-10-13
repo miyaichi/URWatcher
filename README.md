@@ -5,7 +5,7 @@
 
 ## 💡 概要
 URWatcher は、UR都市機構の公式サイトに掲載される賃貸物件情報を定期的に監視し、
-物件が **新たに追加された／削除された（満室になった）** ことを検知して Slack に通知する自動監視ツールです。
+物件が **新たに追加された／削除された（満室になった）** ことを検知して Slack / LINE に通知する自動監視ツールです。
 
 ---
 
@@ -22,9 +22,10 @@ cd urwatcher
 pip install -r requirements.txt
 ```
 
-### 3️⃣ Slack Webhook設定
+### 3️⃣ 通知設定
 ```
 SLACK_WEBHOOK=https://hooks.slack.com/services/XXX/YYY/ZZZ
+LINE_NOTIFY_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ### 4️⃣ 実行
@@ -35,18 +36,14 @@ python monitor_ur.py
 ---
 
 ## ⚙️ 設定項目
-```yaml
-target_url: "https://www.ur-net.go.jp/chintai/kanto/tokyo/list/"
-interval_minutes: 60
-storage_path: "./ur_monitor.db"
-notify:
-  type: slack
-  webhook_url: "${SLACK_WEBHOOK}"
-```
+- `TARGET_URL`: 監視対象のエリアページ（未指定時は都内全体の一覧ページ）
+- `DATABASE_URL`: SQLite などの接続先（未指定時は `sqlite:///ur_monitor.db`）
+- `SLACK_WEBHOOK`: Slack Incoming Webhook URL（任意）
+- `LINE_NOTIFY_TOKEN`: LINE Notify アクセストークン（任意）
 
 ---
 
-## 📊 出力例（Slack通知）
+## 📊 出力例（Slack / LINE通知）
 
 ```
 :new: 新しい物件が追加されました
@@ -73,7 +70,8 @@ services:
       dockerfile: Dockerfile.dev
     command: python monitor_ur.py --run
     environment:
-      - SLACK_WEBHOOK=${SLACK_WEBHOOK:-dummy}
+      - SLACK_WEBHOOK=${SLACK_WEBHOOK:-}
+      - LINE_NOTIFY_TOKEN=${LINE_NOTIFY_TOKEN:-}
       - DATABASE_URL=sqlite:///data/urwatcher.db
     volumes:
       - .:/app
@@ -99,7 +97,7 @@ docker compose run --rm urwatcher pytest
 
 ## 📈 アーキテクチャ概要
 ```
-[UR公式サイト] → [Scraper] → [差分比較] → [SQLite DB] → [通知(Slack)]
+[UR公式サイト] → [Scraper] → [差分比較] → [SQLite DB] → [通知(Slack / LINE)]
 ```
 
 ---
@@ -115,7 +113,7 @@ docker compose run --rm urwatcher pytest
 |------|------|
 | 言語 | Python 3.11 |
 | 依存 | requests, BeautifulSoup4, sqlite3 |
-| 通知 | Slack Webhook |
+| 通知 | Slack Webhook / LINE Notify |
 | DB | SQLite |
 | ライセンス | MIT |
 | 作者 | Yoshihiko Miyaichi |

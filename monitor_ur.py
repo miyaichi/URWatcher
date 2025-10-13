@@ -9,6 +9,7 @@ import sys
 
 from urwatcher.db import Database, resolve_sqlite_path
 from urwatcher.runner import URWatcherRunner
+from urwatcher.notifications import build_notifier_from_env, format_notifications
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     db_path = resolve_sqlite_path(database_url)
     database = Database(path=db_path)
     runner = URWatcherRunner(database=database, target_url=args.target_url)
+    notifier = build_notifier_from_env()
 
     if args.init:
         runner.init()
@@ -88,6 +90,15 @@ def main(argv: list[str] | None = None) -> int:
             )
     else:
         logger.info("No new rooms detected in this run.")
+
+    if not args.dry_run and notifier:
+        messages = format_notifications(summary)
+        if messages:
+            logger.info("Delivering %d notification(s)", len(messages))
+            for message in messages:
+                notifier.send(message)
+        else:
+            logger.debug("No diff notifications to deliver.")
     return 0
 
 
