@@ -3,7 +3,12 @@ from typing import Optional
 import requests
 
 from urwatcher.db import Database
-from urwatcher.scraper import _build_listing, _extract_area_links, scrape_properties
+from urwatcher.scraper import (
+    _build_listing,
+    _extract_area_links,
+    _parse_area_context,
+    scrape_properties,
+)
 
 
 class DummyResponse:
@@ -36,6 +41,24 @@ def test_extract_area_links_finds_unique_urls():
         "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/119.html",
         "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/120.html",
     }
+
+
+def test_parse_area_context_accepts_double_quotes():
+    html = """
+    <html>
+      <head>
+        <script>
+          ur.api.bukken.result.initSearch("kanto","13","tokyo","area",{"skcs":"119"});
+        </script>
+      </head>
+    </html>
+    """
+    context = _parse_area_context(html, "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/119.html")
+    assert context.block == "kanto"
+    assert context.prefecture_code == "13"
+    assert context.prefecture_slug == "tokyo"
+    assert context.page_mode == "area"
+    assert list(context.area_codes) == ["119"]
 
 
 def test_build_listing_uses_nested_all_room_url():

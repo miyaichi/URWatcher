@@ -238,8 +238,15 @@ def scrape_properties(
 
 def _parse_area_context(html_text: str, referer: str) -> AreaContext:
     pattern = re.compile(
-        r"initSearch\(\s*'(?P<block>[^']+)'\s*,\s*'(?P<tdfk_cd>[^']+)'\s*,\s*'(?P<tdfk>[^']+)'\s*,\s*'(?P<mode>[^']+)'\s*,\s*\{(?P<params>[^}]*)\}",
-        re.MULTILINE,
+        r"""
+        initSearch\s*\(\s*
+        (?P<quote1>['"])(?P<block>[^'"]+)(?P=quote1)\s*,\s*
+        (?P<quote2>['"])(?P<tdfk_cd>[^'"]+)(?P=quote2)\s*,\s*
+        (?P<quote3>['"])(?P<tdfk>[^'"]+)(?P=quote3)\s*,\s*
+        (?P<quote4>['"])(?P<mode>[^'"]+)(?P=quote4)\s*,\s*
+        \{(?P<params>[^}]*)\}
+        """,
+        re.MULTILINE | re.DOTALL | re.VERBOSE,
     )
     match = pattern.search(html_text)
     if not match:
