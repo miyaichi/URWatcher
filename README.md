@@ -13,7 +13,7 @@ URWatcher は、UR都市機構の公式サイトに掲載される賃貸物件�
 
 ### 1️⃣ クローン
 ```bash
-git clone https://github.com/yourname/urwatcher.git
+git clone https://github.com/miyaichi/urwatcher.git
 cd urwatcher
 ```
 
