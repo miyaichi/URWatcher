@@ -214,13 +214,17 @@ def scrape_properties(
             except ValueError:
                 room_count = 0
 
-            if room_count <= 0:
-                continue
-
-            listing = _build_listing(row)
-            rooms = list(_fetch_rooms(client, row, listing, expected_total=room_count))
+            listing = _build_listing(row, room_count)
+            rooms: List[Room] = []
+            if room_count > 0:
+                rooms = list(_fetch_rooms(client, row, listing, expected_total=room_count))
+                total_properties += 1
+            else:
+                logger.debug(
+                    "Property %s has zero advertised availability; tracking for count changes",
+                    listing.property_id,
+                )
             snapshots.append(PropertySnapshot(listing=listing, rooms=rooms))
-            total_properties += 1
 
         page_max = _safe_int(property_rows[0].get("pageMax"), default=page_index + 1)
         page_index += 1
@@ -318,13 +322,19 @@ def _resolve_listing_url(row: dict) -> str:
     return ""
 
 
-def _build_listing(row: dict) -> Listing:
+def _build_listing(row: dict, room_count: int) -> Listing:
     property_id = f"{row['shisya']}_{row['danchi']}_{row['shikibetu']}"
     name = row.get("danchiNm") or property_id
     url_path = _resolve_listing_url(row)
     url = urljoin(UR_BASE, url_path)
     address = _extract_listing_address(row)
-    return Listing(property_id=property_id, name=name, url=url, address=address)
+    return Listing(
+        property_id=property_id,
+        name=name,
+        url=url,
+        address=address,
+        available_room_count=max(room_count, 0),
+    )
 
 
 def _extract_listing_address(row: dict) -> str:

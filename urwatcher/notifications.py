@@ -10,6 +10,7 @@ from typing import Iterable, List, Protocol
 import requests
 
 from .models import (
+    AvailabilityChange,
     DiffResult,
     Listing,
     ListingRecord,
@@ -141,6 +142,23 @@ def format_notifications(summary: RunSummary) -> List[str]:
             message = _build_room_message(room_diff.removed, added=False)
             if message:
                 messages.append(message)
+
+    for property_id, change in summary.availability_changes.items():
+        if property_id in added_ids or property_id in removed_ids:
+            continue
+        message_lines = [
+            ":arrows_counterclockwise: 対象空室数が変動しました",
+            f"物件名: {change.property_name}",
+        ]
+        message_lines.append(f"URL: {change.property_url}")
+        previous = change.previous_count
+        if previous is None:
+            message_lines.append(f"現在の対象空室数: {change.current_count}")
+        else:
+            message_lines.append(
+                f"対象空室数: {previous} -> {change.current_count}"
+            )
+        messages.append("\n".join(message_lines))
 
     return messages
 

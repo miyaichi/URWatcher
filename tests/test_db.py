@@ -28,6 +28,7 @@ def test_apply_changes_adds_and_removes_listings(tmp_path):
         name="Sample",
         url="https://example.com/123.html",
         address="Sample Address",
+        available_room_count=2,
     )
     diff_add = DiffResult(added=[listing], removed=[], unchanged=[])
 
@@ -37,12 +38,59 @@ def test_apply_changes_adds_and_removes_listings(tmp_path):
     assert "123" in records
     assert records["123"].active is True
     assert records["123"].address == "Sample Address"
+    assert records["123"].available_room_count == 2
 
     diff_remove = DiffResult(added=[], removed=[records["123"]], unchanged=[])
     db.apply_listing_changes(executed_at="2025-01-02T00:00:00", diff=diff_remove)
 
     updated = db.fetch_listings(active_only=False)["123"]
     assert updated.active is False
+
+
+def test_apply_listing_changes_records_availability_change(tmp_path):
+    db = Database(path=tmp_path / "availability.db")
+    db.initialize()
+
+    listing = Listing(
+        property_id="123",
+        name="Sample",
+        url="https://example.com/123.html",
+        address="Sample Address",
+        available_room_count=1,
+    )
+    db.apply_listing_changes(
+        executed_at="2025-01-01T00:00:00",
+        diff=DiffResult(added=[listing], removed=[], unchanged=[]),
+    )
+
+    updated_listing = Listing(
+        property_id="123",
+        name="Sample",
+        url="https://example.com/123.html",
+        address="Sample Address",
+        available_room_count=0,
+    )
+    db.apply_listing_changes(
+        executed_at="2025-01-02T00:00:00",
+        diff=DiffResult(added=[updated_listing], removed=[], unchanged=[]),
+    )
+
+    records = db.fetch_listings(active_only=False)
+    assert records["123"].available_room_count == 0
+
+    with db.connect() as conn:
+        events = conn.execute(
+            """
+            SELECT event_type, details FROM listing_events
+            WHERE property_id = ? ORDER BY id
+            """,
+            ("123",),
+        ).fetchall()
+
+    assert any(
+        event_type == "availability_changed" and details == "1 -> 0"
+        for event_type, details in events
+    )
 
 
 def test_unicode_listing_names_are_preserved(tmp_path):
@@ -55,6 +103,7 @@ def test_unicode_listing_names_are_preserved(tmp_path):
         name=name,
         url="https://example.com/jp-101.html",
         address="千代田区千代田1-1",
+        available_room_count=3,
     )
     diff = DiffResult(added=[listing], removed=[], unchanged=[])
 
@@ -75,6 +124,7 @@ def test_apply_room_changes_adds_and_removes_rooms(tmp_path):
         name="Sample",
         url="https://example.com/property",
         address="1 Property Way",
+        available_room_count=1,
     )
     db.apply_listing_changes(
         executed_at="2025-03-01T00:00:00",

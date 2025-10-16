@@ -4,8 +4,8 @@ from urwatcher.models import Listing, ListingRecord, Room, RoomRecord
 
 def test_diff_identifies_added_and_removed():
     new_listings = [
-        Listing(property_id="1", name="One", url="https://example.com/1.html", address="1 Example St"),
-        Listing(property_id="2", name="Two", url="https://example.com/2.html", address="2 Example St"),
+        Listing(property_id="1", name="One", url="https://example.com/1.html", address="1 Example St", available_room_count=1),
+        Listing(property_id="2", name="Two", url="https://example.com/2.html", address="2 Example St", available_room_count=2),
     ]
     previous = {
         "2": ListingRecord(
@@ -13,6 +13,7 @@ def test_diff_identifies_added_and_removed():
             name="Two",
             url="https://example.com/2.html",
             address="2 Example St",
+            available_room_count=2,
             first_seen="2025-01-01",
             last_seen="2025-01-02",
             active=True,
@@ -22,6 +23,7 @@ def test_diff_identifies_added_and_removed():
             name="Three",
             url="https://example.com/3.html",
             address="3 Example St",
+            available_room_count=1,
             first_seen="2025-01-01",
             last_seen="2025-01-02",
             active=True,

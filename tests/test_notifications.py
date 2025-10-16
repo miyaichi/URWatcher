@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from urwatcher.models import DiffResult, Listing, ListingRecord, Room, RoomRecord, RunSummary
+from urwatcher.models import AvailabilityChange, DiffResult, Listing, ListingRecord, Room, RoomRecord, RunSummary
 from urwatcher.notifications import (
     CompositeNotifier,
     LineNotifier,
@@ -75,12 +75,14 @@ def test_format_notifications_covers_all_paths():
         name="New Property",
         url="https://example.com/p1",
         address="新宿区北新宿3-27-3",
+        available_room_count=1,
     )
     removed_listing = ListingRecord(
         property_id="P2",
         name="Removed Property",
         url="https://example.com/p2",
         address="新宿区旧住所1-2-3",
+        available_room_count=0,
         first_seen="2025-01-01",
         last_seen="2025-02-01",
         active=False,
@@ -176,6 +178,7 @@ def test_format_notifications_covers_all_paths():
                 unchanged=[],
             ),
         },
+        availability_changes={},
     )
 
     messages = format_notifications(summary)
@@ -188,11 +191,35 @@ def test_format_notifications_covers_all_paths():
     assert any("空室データ: 1件が満室になりました" in message for message in messages)
 
 
+def test_format_notifications_includes_availability_change():
+    change = AvailabilityChange(
+        property_id="P4",
+        property_name="Existing Property",
+        property_url="https://example.com/p4",
+        previous_count=0,
+        current_count=3,
+    )
+
+    summary = RunSummary(
+        executed_at="2025-03-02T00:00:00",
+        property_diff=DiffResult(added=[], removed=[], unchanged=[]),
+        room_diffs={},
+        availability_changes={"P4": change},
+    )
+
+    messages = format_notifications(summary)
+    assert len(messages) == 1
+    assert "対象空室数が変動しました" in messages[0]
+    assert "0 -> 3" in messages[0]
+    assert "Existing Property" in messages[0]
+
+
 def test_format_notifications_returns_empty_when_no_changes():
     summary = RunSummary(
         executed_at="2025-03-01T00:00:00",
         property_diff=DiffResult(added=[], removed=[], unchanged=[]),
         room_diffs={},
+        availability_changes={},
     )
     assert format_notifications(summary) == []
 

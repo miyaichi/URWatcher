@@ -11,6 +11,7 @@ from typing import Callable, Dict, List
 from .db import Database
 from .diff import diff_listings, diff_rooms
 from .models import (
+    AvailabilityChange,
     DiffResult,
     Listing,
     ListingRecord,
@@ -68,9 +69,23 @@ class URWatcherRunner:
         room_diffs: Dict[str, DiffResult[Room, RoomRecord]] = {}
         added_rooms_total: List[Room] = []
         removed_rooms_total: List[RoomRecord] = []
+        availability_changes: Dict[str, AvailabilityChange] = {}
 
         for snapshot in snapshots:
             property_id = snapshot.listing.property_id
+            existing_listing = listing_records.get(property_id)
+            if (
+                existing_listing
+                and existing_listing.active
+                and existing_listing.available_room_count != snapshot.listing.available_room_count
+            ):
+                availability_changes[property_id] = AvailabilityChange(
+                    property_id=property_id,
+                    property_name=snapshot.listing.name,
+                    property_url=snapshot.listing.url,
+                    previous_count=existing_listing.available_room_count,
+                    current_count=snapshot.listing.available_room_count,
+                )
             existing_rooms = self.database.fetch_rooms(
                 property_id=property_id, active_only=False
             )
@@ -138,6 +153,7 @@ class URWatcherRunner:
             executed_at=executed_at,
             property_diff=listing_diff,
             room_diffs=room_diffs,
+            availability_changes=availability_changes,
         )
 
 

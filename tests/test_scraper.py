@@ -76,9 +76,10 @@ def test_build_listing_uses_nested_all_room_url():
         ],
     }
 
-    listing = _build_listing(row)
+    listing = _build_listing(row, room_count=0)
     assert listing.url == "https://www.ur-net.go.jp/chintai/kanto/tokyo/20_2250.html"
     assert listing.address == "Test Address"
+    assert listing.available_room_count == 0
 
 
 def test_scrape_properties_handles_list_page(monkeypatch, tmp_path):
@@ -121,7 +122,17 @@ def test_scrape_properties_handles_list_page(monkeypatch, tmp_path):
                     "place": "Test Address",
                     "allRoomUrl": "/chintai/kanto/tokyo/20_2250.html",
                     "pageMax": "1",
-                }
+                },
+                {
+                    "roomCount": "0",
+                    "shisya": "21",
+                    "danchi": "226",
+                    "shikibetu": "0",
+                    "danchiNm": "Zero Danchi",
+                    "place": "Zero Address",
+                    "allRoomUrl": "/chintai/kanto/tokyo/21_2260.html",
+                    "pageMax": "1",
+                },
             ]
         return [
             {
@@ -144,16 +155,23 @@ def test_scrape_properties_handles_list_page(monkeypatch, tmp_path):
     database.initialize()
 
     snapshots = scrape_properties(database, list_url)
-    assert len(snapshots) == 1
+    assert len(snapshots) == 2
+
     snapshot = snapshots[0]
     assert snapshot.listing.name == "Test Danchi"
     assert snapshot.listing.url == "https://www.ur-net.go.jp/chintai/kanto/tokyo/20_2250.html"
     assert snapshot.listing.address == "Test Address"
+    assert snapshot.listing.available_room_count == 1
     assert len(snapshot.rooms) == 1
     room = snapshot.rooms[0]
     assert room.room_id == "0001"
     assert room.property_id == snapshot.listing.property_id
     assert room.property_url == snapshot.listing.url
+
+    zero_snapshot = snapshots[1]
+    assert zero_snapshot.listing.name == "Zero Danchi"
+    assert zero_snapshot.listing.available_room_count == 0
+    assert zero_snapshot.rooms == []
 
 
 def test_scrape_properties_skips_when_area_unchanged(monkeypatch, tmp_path):

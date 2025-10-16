@@ -91,6 +91,25 @@ def main(argv: list[str] | None = None) -> int:
     else:
         logger.info("No new rooms detected in this run.")
 
+    if summary.availability_changes:
+        logger.info(
+            "Detected availability count changes for %d property(ies)",
+            len(summary.availability_changes),
+        )
+        for change in summary.availability_changes.values():
+            previous = (
+                str(change.previous_count)
+                if change.previous_count is not None
+                else "N/A"
+            )
+            logger.info(
+                "%s | 対象空室数: %s -> %s | %s",
+                change.property_name,
+                previous,
+                change.current_count,
+                change.property_url,
+            )
+
     if not args.dry_run and notifier:
         messages = format_notifications(summary)
         if messages:

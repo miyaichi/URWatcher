@@ -14,6 +14,7 @@ class Listing:
     name: str
     url: str
     address: str
+    available_room_count: int = 0
 
 
 @dataclass
@@ -24,6 +25,7 @@ class ListingRecord:
     name: str
     url: str
     address: str
+    available_room_count: int
     first_seen: str
     last_seen: str
     active: bool
@@ -89,6 +91,17 @@ class PropertySnapshot:
     rooms: Sequence[Room]
 
 
+@dataclass(frozen=True)
+class AvailabilityChange:
+    """Represents a change in the advertised available room count."""
+
+    property_id: str
+    property_name: str
+    property_url: str
+    previous_count: int | None
+    current_count: int
+
+
 @dataclass
 class RunSummary:
     """Aggregated result returned by a monitoring cycle."""
@@ -96,6 +109,7 @@ class RunSummary:
     executed_at: str
     property_diff: DiffResult[Listing, ListingRecord]
     room_diffs: Dict[str, DiffResult[Room, RoomRecord]]
+    availability_changes: Dict[str, AvailabilityChange]
 
 
 @dataclass

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from urwatcher.db import Database
 from urwatcher.models import Listing, PropertySnapshot, Room
 from urwatcher.runner import URWatcherRunner
@@ -32,12 +34,19 @@ def make_room(property_id: str, suffix: str) -> Room:
     )
 
 
-def make_snapshot(property_id: str, rooms: list[Room]) -> PropertySnapshot:
+def make_snapshot(
+    property_id: str,
+    rooms: list[Room],
+    available_count: int | None = None,
+) -> PropertySnapshot:
+    if available_count is None:
+        available_count = len(rooms)
     listing = Listing(
         property_id=property_id,
         name=f"Property {property_id}",
         url=f"https://example.com/{property_id}.html",
         address=f"{property_id} Address",
+        available_room_count=available_count,
     )
     return PropertySnapshot(listing=listing, rooms=rooms)
 
@@ -55,6 +64,7 @@ def test_runner_records_dry_run_without_persisting(tmp_path):
     summary = runner.run(dry_run=True)
 
     assert summary.property_diff.added == [snapshots[0].listing]
+    assert summary.availability_changes == {}
     entries = list(runner.database.recent_runs())
     assert len(entries) == 1
     executed_at, status, notes = entries[0]
@@ -99,3 +109,28 @@ def test_runner_persists_added_and_removed(tmp_path):
 
     rooms_c = runner.database.fetch_rooms(property_id="C", active_only=True)
     assert set(rooms_c.keys()) == {"C-301"}
+
+
+def test_runner_reports_availability_changes(tmp_path):
+    initial_snapshot = [
+        make_snapshot("A", [make_room("A", "101")], available_count=1),
+    ]
+    runner = build_runner(tmp_path, scraper=lambda db, url: initial_snapshot)
+    runner.run()
+
+    subsequent_snapshot = [
+        make_snapshot("A", [], available_count=0),
+    ]
+    runner.scraper = lambda db, url: subsequent_snapshot
+    summary = runner.run()
+
+    assert "A" in summary.availability_changes
+    change = summary.availability_changes["A"]
+    assert change.previous_count == 1
+    assert change.current_count == 0
+
+    listings = runner.database.fetch_listings(active_only=False)
+    assert listings["A"].active is True
+    rooms = runner.database.fetch_rooms(property_id="A", active_only=False)
+    assert all(record.active is False for record in rooms.values())
+    assert summary.room_diffs["A"].removed
