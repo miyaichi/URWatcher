@@ -89,7 +89,12 @@ class URWatcherRunner:
             existing_rooms = self.database.fetch_rooms(
                 property_id=property_id, active_only=False
             )
-            room_diff = diff_rooms(snapshot.rooms, existing_rooms)
+            active_rooms = {
+                room_id: record
+                for room_id, record in existing_rooms.items()
+                if record.active
+            }
+            room_diff = diff_rooms(snapshot.rooms, active_rooms)
             room_diffs[property_id] = room_diff
             added_rooms_total.extend(room_diff.added)
             removed_rooms_total.extend(room_diff.removed)

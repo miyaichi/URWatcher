@@ -134,3 +134,33 @@ def test_runner_reports_availability_changes(tmp_path):
     rooms = runner.database.fetch_rooms(property_id="A", active_only=False)
     assert all(record.active is False for record in rooms.values())
     assert summary.room_diffs["A"].removed
+
+
+def test_runner_marks_relisted_rooms_as_additions(tmp_path):
+    first_run = [
+        make_snapshot("A", [make_room("A", "101")]),
+    ]
+    runner = build_runner(tmp_path, scraper=lambda db, url: first_run)
+    runner.run()
+
+    second_run = [
+        make_snapshot("A", [], available_count=0),
+    ]
+    runner.scraper = lambda db, url: second_run
+    runner.run()
+
+    stored = runner.database.fetch_rooms(property_id="A", active_only=False)
+    assert stored["A-101"].active is False
+
+    third_run = [
+        make_snapshot("A", [make_room("A", "101")]),
+    ]
+    runner.scraper = lambda db, url: third_run
+    summary = runner.run()
+
+    room_diff = summary.room_diffs["A"]
+    assert room_diff.added
+    assert not room_diff.removed
+    change = summary.availability_changes["A"]
+    assert change.previous_count == 0
+    assert change.current_count == 1
