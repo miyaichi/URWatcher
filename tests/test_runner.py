@@ -11,7 +11,7 @@ def build_runner(tmp_path, scraper=None) -> URWatcherRunner:
     runner = URWatcherRunner(
         database=database,
         target_url="https://example.com",
-        scraper=scraper or (lambda db, url: []),
+        scraper=scraper or (lambda db, url: ([], True)),
     )
     runner.init()
     return runner
@@ -60,7 +60,7 @@ def test_runner_records_dry_run_without_persisting(tmp_path):
     snapshots = [
         make_snapshot("A", [make_room("A", "101")]),
     ]
-    runner = build_runner(tmp_path, scraper=lambda db, url: snapshots)
+    runner = build_runner(tmp_path, scraper=lambda db, url: (snapshots, True))
     summary = runner.run(dry_run=True)
 
     assert summary.property_diff.added == [snapshots[0].listing]
@@ -85,7 +85,7 @@ def test_runner_persists_added_and_removed(tmp_path):
         make_snapshot("B", [make_room("B", "201")]),
     ]
 
-    runner = build_runner(tmp_path, scraper=lambda db, url: snapshots_round_one)
+    runner = build_runner(tmp_path, scraper=lambda db, url: (snapshots_round_one, True))
     runner.run()
 
     stored = runner.database.fetch_listings(active_only=True)
@@ -96,7 +96,7 @@ def test_runner_persists_added_and_removed(tmp_path):
         make_snapshot("C", [make_room("C", "301")]),
     ]
 
-    runner.scraper = lambda db, url: snapshots_round_two
+    runner.scraper = lambda db, url: (snapshots_round_two, True)
     runner.run()
 
     listings = runner.database.fetch_listings(active_only=False)
@@ -115,13 +115,13 @@ def test_runner_reports_availability_changes(tmp_path):
     initial_snapshot = [
         make_snapshot("A", [make_room("A", "101")], available_count=1),
     ]
-    runner = build_runner(tmp_path, scraper=lambda db, url: initial_snapshot)
+    runner = build_runner(tmp_path, scraper=lambda db, url: (initial_snapshot, True))
     runner.run()
 
     subsequent_snapshot = [
         make_snapshot("A", [], available_count=0),
     ]
-    runner.scraper = lambda db, url: subsequent_snapshot
+    runner.scraper = lambda db, url: (subsequent_snapshot, True)
     summary = runner.run()
 
     assert "A" in summary.availability_changes
@@ -140,13 +140,13 @@ def test_runner_marks_relisted_rooms_as_additions(tmp_path):
     first_run = [
         make_snapshot("A", [make_room("A", "101")]),
     ]
-    runner = build_runner(tmp_path, scraper=lambda db, url: first_run)
+    runner = build_runner(tmp_path, scraper=lambda db, url: (first_run, True))
     runner.run()
 
     second_run = [
         make_snapshot("A", [], available_count=0),
     ]
-    runner.scraper = lambda db, url: second_run
+    runner.scraper = lambda db, url: (second_run, True)
     runner.run()
 
     stored = runner.database.fetch_rooms(property_id="A", active_only=False)
@@ -155,7 +155,7 @@ def test_runner_marks_relisted_rooms_as_additions(tmp_path):
     third_run = [
         make_snapshot("A", [make_room("A", "101")]),
     ]
-    runner.scraper = lambda db, url: third_run
+    runner.scraper = lambda db, url: (third_run, True)
     summary = runner.run()
 
     room_diff = summary.room_diffs["A"]
@@ -164,3 +164,24 @@ def test_runner_marks_relisted_rooms_as_additions(tmp_path):
     change = summary.availability_changes["A"]
     assert change.previous_count == 0
     assert change.current_count == 1
+
+
+def test_runner_preserves_state_when_scraper_reports_no_change(tmp_path):
+    initial = [
+        make_snapshot("A", [make_room("A", "101")]),
+    ]
+    runner = build_runner(tmp_path, scraper=lambda db, url: (initial, True))
+    runner.run()
+
+    runner.scraper = lambda db, url: ([], False)
+    summary = runner.run()
+
+    listings = runner.database.fetch_listings(active_only=False)
+    assert listings["A"].active is True
+
+    rooms = runner.database.fetch_rooms(property_id="A", active_only=False)
+    assert rooms["A-101"].active is True
+
+    assert not summary.property_diff.added
+    assert not summary.property_diff.removed
+    assert summary.room_diffs == {}

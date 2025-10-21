@@ -46,7 +46,12 @@ class URWatcherRunner:
         executed_at = dt.datetime.utcnow().isoformat()
 
         try:
-            snapshots = self.scraper(self.database, self.target_url)
+            scrape_result = self.scraper(self.database, self.target_url)
+            authoritative = True
+            if isinstance(scrape_result, tuple) and len(scrape_result) == 2:
+                snapshots, authoritative = scrape_result
+            else:
+                snapshots = scrape_result  # type: ignore[assignment]
             logger.info(
                 "Scraped %d properties from %s", len(snapshots), self.target_url
             )
@@ -58,6 +63,23 @@ class URWatcherRunner:
                 notes=f"scrape_failed: {exc}",
             )
             raise
+
+        if not authoritative:
+            logger.info(
+                "Scraper reported no data changes; skipping diff and leaving state unchanged."
+            )
+            empty_diff: DiffResult[Listing, ListingRecord] = DiffResult(
+                added=[], removed=[], unchanged=[]
+            )
+            note = _format_note(empty_diff, {})
+            status = "success"
+            self.database.add_run(executed_at=executed_at, status=status, notes=note)
+            return RunSummary(
+                executed_at=executed_at,
+                property_diff=empty_diff,
+                room_diffs={},
+                availability_changes={},
+            )
 
         current_listings = [snapshot.listing for snapshot in snapshots]
         listing_records = self.database.fetch_listings(active_only=False)

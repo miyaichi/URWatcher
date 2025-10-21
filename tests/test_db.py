@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from openpyxl import load_workbook
+
 from urwatcher.db import Database, resolve_sqlite_path
 from urwatcher.models import DiffResult, Listing, Room
 
@@ -164,3 +166,53 @@ def test_apply_room_changes_adds_and_removes_rooms(tmp_path):
 
     updated = db.fetch_rooms(property_id="P-1", active_only=False)["R-1"]
     assert updated.active is False
+
+
+def test_export_rooms_to_xlsx(tmp_path):
+    db = Database(path=tmp_path / "export.db")
+    db.initialize()
+
+    listing = Listing(
+        property_id="P-1",
+        name="Sample",
+        url="https://example.com/property",
+        address="1 Property Way",
+        available_room_count=1,
+    )
+    db.apply_listing_changes(
+        executed_at="2025-04-01T00:00:00",
+        diff=DiffResult(added=[listing], removed=[], unchanged=[]),
+    )
+
+    room = Room(
+        room_id="R-1",
+        property_id="P-1",
+        property_name="Sample",
+        property_url="https://example.com/property",
+        building_name="Building A",
+        room_number="101",
+        rent="60,000円",
+        common_fee="3,000円",
+        layout="2DK",
+        floor_area="45㎡",
+        floor="5階",
+        room_url="https://example.com/property/rooms/101",
+    )
+    db.apply_room_changes(
+        executed_at="2025-04-01T00:05:00",
+        property_id="P-1",
+        diff=DiffResult(added=[room], removed=[], unchanged=[]),
+    )
+
+    export_path = tmp_path / "rooms.xlsx"
+    db.export_rooms_to_xlsx(export_path)
+
+    assert export_path.exists()
+    workbook = load_workbook(export_path)
+    worksheet = workbook.active
+    headers = [cell.value for cell in next(worksheet.iter_rows(min_row=1, max_row=1))]
+    assert headers[:3] == ["address", "property_id", "room_id"]
+    data_row = [cell.value for cell in next(worksheet.iter_rows(min_row=2, max_row=2))]
+    assert data_row[0] == "1 Property Way"
+    assert data_row[1] == "P-1"
+    assert data_row[2] == "R-1"

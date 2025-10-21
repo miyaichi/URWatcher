@@ -6,6 +6,7 @@ import argparse
 import logging
 import os
 import sys
+from pathlib import Path
 
 from urwatcher.db import Database, resolve_sqlite_path
 from urwatcher.runner import URWatcherRunner
@@ -118,6 +119,17 @@ def main(argv: list[str] | None = None) -> int:
                 notifier.send(message)
         else:
             logger.debug("No diff notifications to deliver.")
+
+    if not args.dry_run:
+        try:
+            timestamp = (
+                summary.executed_at.replace(":", "-").replace(".", "-").replace("T", "_")
+            )
+            export_path = Path("data") / f"rooms_{timestamp}.xlsx"
+            database.export_rooms_to_xlsx(export_path)
+            logger.info("Exported room inventory to %s", export_path)
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to export room inventory snapshot")
     return 0
 
 

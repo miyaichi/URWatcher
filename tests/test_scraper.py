@@ -154,8 +154,9 @@ def test_scrape_properties_handles_list_page(monkeypatch, tmp_path):
     database = Database(path=tmp_path / "test.db")
     database.initialize()
 
-    snapshots = scrape_properties(database, list_url)
+    snapshots, authoritative = scrape_properties(database, list_url)
     assert len(snapshots) == 2
+    assert authoritative is True
 
     snapshot = snapshots[0]
     assert snapshot.listing.name == "Test Danchi"
@@ -229,16 +230,18 @@ def test_scrape_properties_skips_when_area_unchanged(monkeypatch, tmp_path):
     database.initialize()
 
     # First crawl populates snapshot and fetches rooms
-    first = scrape_properties(database, area_url)
+    first, authoritative_first = scrape_properties(database, area_url)
     assert len(first) == 1
     assert first[0].listing.address == "Test Address"
     assert call_count == {"property": 1, "room": 1}
+    assert authoritative_first is True
 
     # Second crawl should perform only quick probe (no room fetch)
-    second = scrape_properties(database, area_url)
+    second, authoritative_second = scrape_properties(database, area_url)
     assert second == []
     assert call_count["property"] == 2
     assert call_count["room"] == 1
+    assert authoritative_second is False
 
 
 def test_scrape_properties_avoids_recursion(monkeypatch, tmp_path):
@@ -275,7 +278,9 @@ def test_scrape_properties_avoids_recursion(monkeypatch, tmp_path):
     )
 
     # Ensure recursion terminates without error
-    assert scrape_properties(database, list_url) == []
+    snapshots, authoritative = scrape_properties(database, list_url)
+    assert snapshots == []
+    assert authoritative is True
 
 
 def test_scrape_properties_handles_page_without_init(monkeypatch, tmp_path):
@@ -287,7 +292,9 @@ def test_scrape_properties_handles_page_without_init(monkeypatch, tmp_path):
     database = Database(path=tmp_path / "noinit.db")
     database.initialize()
 
-    assert scrape_properties(database, url) == []
+    snapshots, authoritative = scrape_properties(database, url)
+    assert snapshots == []
+    assert authoritative is True
 
 
 def test_scrape_properties_handles_api_error(monkeypatch, tmp_path):
@@ -316,4 +323,6 @@ def test_scrape_properties_handles_api_error(monkeypatch, tmp_path):
     database = Database(path=tmp_path / "apierr.db")
     database.initialize()
 
-    assert scrape_properties(database, url) == []
+    snapshots, authoritative = scrape_properties(database, url)
+    assert snapshots == []
+    assert authoritative is True

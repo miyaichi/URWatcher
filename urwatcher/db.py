@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import sqlite3
 import datetime as dt
+import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, Optional, Tuple
@@ -485,6 +485,34 @@ class Database:
                 )
 
             conn.commit()
+
+    def export_rooms_to_xlsx(self, destination: Path) -> None:
+        """Export the full room inventory (with listing addresses) to an XLSX file."""
+        try:
+            from openpyxl import Workbook
+        except ImportError as exc:  # pragma: no cover - dependency error surfaced at call sites
+            raise RuntimeError(
+                "openpyxl is required to export rooms; please install it via `pip install openpyxl`."
+            ) from exc
+
+        query = """
+            SELECT listings.address, rooms.*
+            FROM rooms
+            JOIN listings ON rooms.property_id = listings.property_id
+        """
+        with self.connect() as conn:
+            cursor = conn.execute(query)
+            columns = [description[0] for description in cursor.description]
+            rows = cursor.fetchall()
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.title = "rooms"
+        worksheet.append(columns)
+        for row in rows:
+            worksheet.append(list(row))
+        workbook.save(destination)
 
     def get_area_snapshot(self, area_url: str) -> Optional[AreaSnapshot]:
         with self.connect() as conn:

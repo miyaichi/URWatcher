@@ -7,7 +7,7 @@ import html
 import logging
 import re
 from dataclasses import dataclass
-from typing import Iterable, List, Sequence, Set
+from typing import Iterable, List, Sequence, Set, Tuple
 from urllib.parse import urljoin
 
 import requests
@@ -117,13 +117,13 @@ def scrape_properties(
     target_url: str,
     timeout: int = 20,
     visited: Set[str] | None = None,
-) -> List[PropertySnapshot]:
+) -> Tuple[List[PropertySnapshot], bool]:
     """Scrape property snapshots (including room inventories) for the given area page."""
     if visited is None:
         visited = set()
     if target_url in visited:
         logger.debug("Skipping already-visited URL %s to avoid loops", target_url)
-        return []
+        return [], True
     visited.add(target_url)
 
     logger.debug("Fetching area page %s", target_url)
@@ -149,13 +149,14 @@ def scrape_properties(
                 target_url,
             )
             database.upsert_area_snapshot(target_url, content_hash, etag, last_modified)
-            return []
+            return [], True
         logger.info(
             "List page detected; scanning %d area pages beneath %s",
             len(area_links),
             target_url,
         )
         snapshots: List[PropertySnapshot] = []
+        authoritative = False
         for idx, area_url in enumerate(sorted(area_links), start=1):
             logger.info(
                 "Scanning area %d/%d: %s",
@@ -163,15 +164,15 @@ def scrape_properties(
                 len(area_links),
                 area_url,
             )
-            snapshots.extend(
-                scrape_properties(
+            child_snapshots, child_authoritative = scrape_properties(
                     database,
                     area_url,
                     timeout=timeout,
                     visited=visited,
                 )
-            )
-        return snapshots
+            snapshots.extend(child_snapshots)
+            authoritative = authoritative or child_authoritative
+        return snapshots, authoritative
     client = URApiClient(context=context)
 
     if snapshot and not area_changed:
@@ -182,7 +183,7 @@ def scrape_properties(
         )
         _quick_property_probe(client)
         database.upsert_area_snapshot(target_url, content_hash, etag, last_modified)
-        return []
+        return [], False
 
     snapshots: List[PropertySnapshot] = []
     page_index = 0
@@ -237,7 +238,7 @@ def scrape_properties(
         page_index,
     )
     database.upsert_area_snapshot(target_url, content_hash, etag, last_modified)
-    return snapshots
+    return snapshots, True
 
 
 def _parse_area_context(html_text: str, referer: str) -> AreaContext:
