@@ -43,7 +43,8 @@ def test_apply_changes_adds_and_removes_listings(tmp_path):
     assert records["123"].available_room_count == 2
 
     diff_remove = DiffResult(added=[], removed=[records["123"]], unchanged=[])
-    db.apply_listing_changes(executed_at="2025-01-02T00:00:00", diff=diff_remove)
+    db.apply_listing_changes(executed_at="2025-01-02T00:00:00",
+                             diff=diff_remove)
 
     updated = db.fetch_listings(active_only=False)["123"]
     assert updated.active is False
@@ -86,13 +87,11 @@ def test_apply_listing_changes_records_availability_change(tmp_path):
             SELECT event_type, details FROM listing_events
             WHERE property_id = ? ORDER BY id
             """,
-            ("123",),
+            ("123", ),
         ).fetchall()
 
-    assert any(
-        event_type == "availability_changed" and details == "1 -> 0"
-        for event_type, details in events
-    )
+    assert any(event_type == "availability_changed" and details == "1 -> 0"
+               for event_type, details in events)
 
 
 def test_unicode_listing_names_are_preserved(tmp_path):
@@ -210,9 +209,13 @@ def test_export_rooms_to_xlsx(tmp_path):
     assert export_path.exists()
     workbook = load_workbook(export_path)
     worksheet = workbook.active
-    headers = [cell.value for cell in next(worksheet.iter_rows(min_row=1, max_row=1))]
+    headers = [
+        cell.value for cell in next(worksheet.iter_rows(min_row=1, max_row=1))
+    ]
     assert headers[:3] == ["address", "property_id", "room_id"]
-    data_row = [cell.value for cell in next(worksheet.iter_rows(min_row=2, max_row=2))]
+    data_row = [
+        cell.value for cell in next(worksheet.iter_rows(min_row=2, max_row=2))
+    ]
     assert data_row[0] == "1 Property Way"
     assert data_row[1] == "P-1"
     assert data_row[2] == "R-1"

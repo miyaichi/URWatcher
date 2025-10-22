@@ -4,11 +4,20 @@ from urwatcher.models import Listing, ListingRecord, Room, RoomRecord
 
 def test_diff_identifies_added_and_removed():
     new_listings = [
-        Listing(property_id="1", name="One", url="https://example.com/1.html", address="1 Example St", available_room_count=1),
-        Listing(property_id="2", name="Two", url="https://example.com/2.html", address="2 Example St", available_room_count=2),
+        Listing(property_id="1",
+                name="One",
+                url="https://example.com/1.html",
+                address="1 Example St",
+                available_room_count=1),
+        Listing(property_id="2",
+                name="Two",
+                url="https://example.com/2.html",
+                address="2 Example St",
+                available_room_count=2),
     ]
     previous = {
-        "2": ListingRecord(
+        "2":
+        ListingRecord(
             property_id="2",
             name="Two",
             url="https://example.com/2.html",
@@ -18,7 +27,8 @@ def test_diff_identifies_added_and_removed():
             last_seen="2025-01-02",
             active=True,
         ),
-        "3": ListingRecord(
+        "3":
+        ListingRecord(
             property_id="3",
             name="Three",
             url="https://example.com/3.html",
@@ -69,7 +79,8 @@ def test_diff_rooms_behaves_like_listings():
         ),
     ]
     previous = {
-        "r2": RoomRecord(
+        "r2":
+        RoomRecord(
             room_id="r2",
             property_id="A",
             property_name="Property A",
@@ -86,7 +97,8 @@ def test_diff_rooms_behaves_like_listings():
             last_seen="2025-01-02",
             active=True,
         ),
-        "r3": RoomRecord(
+        "r3":
+        RoomRecord(
             room_id="r3",
             property_id="A",
             property_name="Property A",

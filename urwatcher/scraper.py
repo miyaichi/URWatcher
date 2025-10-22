@@ -38,17 +38,18 @@ class AreaContext:
 class URApiClient:
     """Lightweight wrapper around the UR search API."""
 
-    def __init__(self, context: AreaContext, session: requests.Session | None = None):
+    def __init__(self,
+                 context: AreaContext,
+                 session: requests.Session | None = None):
         self.context = context
         self.session = session or requests.Session()
-        self.session.headers.update(
-            {
-                "User-Agent": "URWatcher/1.0 (+https://github.com/miyaichi/URWatcher)",
-                "Origin": UR_BASE,
-                "Referer": context.referer,
-                "Accept": "application/json",
-            }
-        )
+        self.session.headers.update({
+            "User-Agent":
+            "URWatcher/1.0 (+https://github.com/miyaichi/URWatcher)",
+            "Origin": UR_BASE,
+            "Referer": context.referer,
+            "Accept": "application/json",
+        })
 
     def post(self, endpoint: str, data: List[tuple[str, str]]) -> list[dict]:
         response = self.session.post(
@@ -66,29 +67,26 @@ class URApiClient:
         payload: List[tuple[str, str]] = [("mode", self.context.page_mode)]
         for code in self.context.area_codes:
             payload.append(("skcs", code))
-        payload.extend(
-            [
-                ("block", self.context.block),
-                ("tdfk", self.context.prefecture_code),
-                ("rireki_tdfk", self.context.prefecture_code),
-            ]
-        )
+        payload.extend([
+            ("block", self.context.block),
+            ("tdfk", self.context.prefecture_code),
+            ("rireki_tdfk", self.context.prefecture_code),
+        ])
         return payload
 
-    def property_payload(self, page_index: int, page_size: int) -> List[tuple[str, str]]:
+    def property_payload(self, page_index: int,
+                         page_size: int) -> List[tuple[str, str]]:
         payload = self.base_payload()
-        payload.extend(
-            [
-                ("orderByField", "0"),
-                ("pageSize", str(page_size)),
-                ("pageIndex", str(page_index)),
-                ("shisya", ""),
-                ("danchi", ""),
-                ("shikibetu", ""),
-                ("pageIndexRoom", "0"),
-                ("sp", ""),
-            ]
-        )
+        payload.extend([
+            ("orderByField", "0"),
+            ("pageSize", str(page_size)),
+            ("pageIndex", str(page_index)),
+            ("shisya", ""),
+            ("danchi", ""),
+            ("shikibetu", ""),
+            ("pageIndexRoom", "0"),
+            ("sp", ""),
+        ])
         return payload
 
     def room_payload(
@@ -97,18 +95,16 @@ class URApiClient:
         page_index_room: int,
     ) -> List[tuple[str, str]]:
         payload = self.base_payload()
-        payload.extend(
-            [
-                ("orderByField", "0"),
-                ("pageSize", "10"),
-                ("pageIndex", "0"),
-                ("shisya", property_data["shisya"]),
-                ("danchi", property_data["danchi"]),
-                ("shikibetu", property_data["shikibetu"]),
-                ("pageIndexRoom", str(page_index_room)),
-                ("sp", ""),
-            ]
-        )
+        payload.extend([
+            ("orderByField", "0"),
+            ("pageSize", "10"),
+            ("pageIndex", "0"),
+            ("shisya", property_data["shisya"]),
+            ("danchi", property_data["danchi"]),
+            ("shikibetu", property_data["shikibetu"]),
+            ("pageIndexRoom", str(page_index_room)),
+            ("sp", ""),
+        ])
         return payload
 
 
@@ -122,7 +118,8 @@ def scrape_properties(
     if visited is None:
         visited = set()
     if target_url in visited:
-        logger.debug("Skipping already-visited URL %s to avoid loops", target_url)
+        logger.debug("Skipping already-visited URL %s to avoid loops",
+                     target_url)
         return [], True
     visited.add(target_url)
 
@@ -148,7 +145,8 @@ def scrape_properties(
                 "No initSearch parameters found for %s; treating as zero-availability page",
                 target_url,
             )
-            database.upsert_area_snapshot(target_url, content_hash, etag, last_modified)
+            database.upsert_area_snapshot(target_url, content_hash, etag,
+                                          last_modified)
             return [], True
         logger.info(
             "List page detected; scanning %d area pages beneath %s",
@@ -165,11 +163,11 @@ def scrape_properties(
                 area_url,
             )
             child_snapshots, child_authoritative = scrape_properties(
-                    database,
-                    area_url,
-                    timeout=timeout,
-                    visited=visited,
-                )
+                database,
+                area_url,
+                timeout=timeout,
+                visited=visited,
+            )
             snapshots.extend(child_snapshots)
             authoritative = authoritative or child_authoritative
         return snapshots, authoritative
@@ -182,7 +180,8 @@ def scrape_properties(
             snapshot.fetched_at,
         )
         _quick_property_probe(client)
-        database.upsert_area_snapshot(target_url, content_hash, etag, last_modified)
+        database.upsert_area_snapshot(target_url, content_hash, etag,
+                                      last_modified)
         return [], False
 
     snapshots: List[PropertySnapshot] = []
@@ -190,11 +189,11 @@ def scrape_properties(
     total_properties = 0
 
     while True:
-        payload = client.property_payload(
-            page_index=page_index, page_size=DEFAULT_PAGE_SIZE
-        )
+        payload = client.property_payload(page_index=page_index,
+                                          page_size=DEFAULT_PAGE_SIZE)
         try:
-            property_rows = client.post("bukken/result/bukken_result/", payload)
+            property_rows = client.post("bukken/result/bukken_result/",
+                                        payload)
         except requests.HTTPError as exc:  # type: ignore[attr-defined]
             logger.warning(
                 "Property fetch failed for %s (page %d): %s",
@@ -206,9 +205,8 @@ def scrape_properties(
         if not property_rows:
             break
 
-        logger.debug(
-            "Fetched %d property rows for page %d", len(property_rows), page_index
-        )
+        logger.debug("Fetched %d property rows for page %d",
+                     len(property_rows), page_index)
         for row in property_rows:
             try:
                 room_count = int(row.get("roomCount") or 0)
@@ -218,7 +216,11 @@ def scrape_properties(
             listing = _build_listing(row, room_count)
             rooms: List[Room] = []
             if room_count > 0:
-                rooms = list(_fetch_rooms(client, row, listing, expected_total=room_count))
+                rooms = list(
+                    _fetch_rooms(client,
+                                 row,
+                                 listing,
+                                 expected_total=room_count))
                 total_properties += 1
             else:
                 logger.debug(
@@ -227,7 +229,8 @@ def scrape_properties(
                 )
             snapshots.append(PropertySnapshot(listing=listing, rooms=rooms))
 
-        page_max = _safe_int(property_rows[0].get("pageMax"), default=page_index + 1)
+        page_max = _safe_int(property_rows[0].get("pageMax"),
+                             default=page_index + 1)
         page_index += 1
         if page_index >= page_max:
             break
@@ -237,7 +240,8 @@ def scrape_properties(
         total_properties,
         page_index,
     )
-    database.upsert_area_snapshot(target_url, content_hash, etag, last_modified)
+    database.upsert_area_snapshot(target_url, content_hash, etag,
+                                  last_modified)
     return snapshots, True
 
 
@@ -255,7 +259,8 @@ def _parse_area_context(html_text: str, referer: str) -> AreaContext:
     )
     match = pattern.search(html_text)
     if not match:
-        raise ValueError("Could not locate initSearch parameters in area page.")
+        raise ValueError(
+            "Could not locate initSearch parameters in area page.")
 
     params = match.group("params")
     area_codes = re.findall(r"'?skcs'?\s*:\s*'([^']+)'", params)
@@ -364,7 +369,8 @@ def _fetch_rooms(
     page_index_room = 0
 
     while len(seen) < expected_total:
-        payload = client.room_payload(property_data, page_index_room=page_index_room)
+        payload = client.room_payload(property_data,
+                                      page_index_room=page_index_room)
         room_rows = client.post("bukken/result/bukken_result_room/", payload)
         if not room_rows:
             break
@@ -399,7 +405,8 @@ def _build_room(row: dict, listing: Listing) -> Room:
         layout=(row.get("type") or "").strip(),
         floor_area=floor_area,
         floor=(row.get("floor") or "").strip(),
-        room_url=urljoin(UR_BASE, row.get("roomLinkPc") or ""),
+        room_url=urljoin(UR_BASE,
+                         row.get("roomLinkPc") or ""),
     )
 
 

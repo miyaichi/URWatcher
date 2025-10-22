@@ -10,7 +10,6 @@ from typing import Dict, Iterable, Optional, Tuple
 
 from .models import AreaSnapshot, DiffResult, Listing, ListingRecord, Room, RoomRecord
 
-
 SQLITE_PREFIX = "sqlite://"
 
 
@@ -20,7 +19,7 @@ def resolve_sqlite_path(database_url: str) -> Path:
         raise ValueError("DATABASE_URL must not be empty")
 
     if database_url.startswith(SQLITE_PREFIX):
-        raw_path = database_url[len(SQLITE_PREFIX) :]
+        raw_path = database_url[len(SQLITE_PREFIX):]
         # Allow sqlite:///path/to/file and sqlite://path/to/file styles.
         if raw_path.startswith("/"):
             raw_path = raw_path[1:]
@@ -46,18 +45,15 @@ class Database:
 
     def initialize(self) -> None:
         with self.connect() as conn:
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS runs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     executed_at TEXT NOT NULL,
                     status TEXT NOT NULL,
                     notes TEXT
                 )
-                """
-            )
-            conn.execute(
-                """
+                """)
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS listings (
                     property_id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
@@ -68,8 +64,7 @@ class Database:
                     last_seen TEXT NOT NULL,
                     active INTEGER NOT NULL DEFAULT 1
                 )
-                """
-            )
+                """)
             columns = {
                 row[1]
                 for row in conn.execute("PRAGMA table_info(listings)")
@@ -80,8 +75,7 @@ class Database:
                 conn.execute(
                     "ALTER TABLE listings ADD COLUMN available_room_count INTEGER NOT NULL DEFAULT 0"
                 )
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS listing_events (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     property_id TEXT NOT NULL,
@@ -90,10 +84,8 @@ class Database:
                     details TEXT,
                     FOREIGN KEY(property_id) REFERENCES listings(property_id)
                 )
-                """
-            )
-            conn.execute(
-                """
+                """)
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS rooms (
                     property_id TEXT NOT NULL,
                     room_id TEXT NOT NULL,
@@ -113,10 +105,8 @@ class Database:
                     FOREIGN KEY(property_id) REFERENCES listings(property_id),
                     PRIMARY KEY(property_id, room_id)
                 )
-                """
-            )
-            conn.execute(
-                """
+                """)
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS room_events (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     room_id TEXT NOT NULL,
@@ -126,10 +116,8 @@ class Database:
                     details TEXT,
                     FOREIGN KEY(property_id, room_id) REFERENCES rooms(property_id, room_id)
                 )
-                """
-            )
-            conn.execute(
-                """
+                """)
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS area_snapshots (
                     area_url TEXT PRIMARY KEY,
                     content_hash TEXT NOT NULL,
@@ -137,11 +125,11 @@ class Database:
                     last_modified TEXT,
                     fetched_at TEXT NOT NULL
                 )
-                """
-            )
+                """)
             conn.commit()
 
-    def add_run(self, executed_at: str, status: str, notes: str | None) -> None:
+    def add_run(self, executed_at: str, status: str,
+                notes: str | None) -> None:
         with self.connect() as conn:
             conn.execute(
                 "INSERT INTO runs (executed_at, status, notes) VALUES (?, ?, ?)",
@@ -149,15 +137,17 @@ class Database:
             )
             conn.commit()
 
-    def recent_runs(self, limit: int = 10) -> Iterable[Tuple[str, str, str | None]]:
+    def recent_runs(self,
+                    limit: int = 10) -> Iterable[Tuple[str, str, str | None]]:
         with self.connect() as conn:
             cursor = conn.execute(
                 "SELECT executed_at, status, notes FROM runs ORDER BY id DESC LIMIT ?",
-                (limit,),
+                (limit, ),
             )
             yield from cursor.fetchall()
 
-    def fetch_listings(self, active_only: bool = False) -> Dict[str, ListingRecord]:
+    def fetch_listings(self,
+                       active_only: bool = False) -> Dict[str, ListingRecord]:
         """Return listings keyed by property_id."""
         query = """
             SELECT property_id, name, url, address, available_room_count, first_seen, last_seen, active
@@ -175,7 +165,8 @@ class Database:
                     name=row[1],
                     url=row[2],
                     address=row[3] or "",
-                    available_room_count=int(row[4]) if row[4] is not None else 0,
+                    available_room_count=int(row[4])
+                    if row[4] is not None else 0,
                     first_seen=row[5],
                     last_seen=row[6],
                     active=bool(row[7]),
@@ -251,7 +242,8 @@ class Database:
                     INSERT INTO listing_events (property_id, event_type, occurred_at, details)
                     VALUES (?, ?, ?, ?)
                     """,
-                    (listing.property_id, event_type, executed_at, listing.name),
+                    (listing.property_id, event_type, executed_at,
+                     listing.name),
                 )
 
             for record in diff.removed:
@@ -320,7 +312,7 @@ class Database:
         conditions = []
         if property_id:
             conditions.append("property_id = ?")
-            params += (property_id,)
+            params += (property_id, )
         if active_only:
             conditions.append("active = 1")
         if conditions:
@@ -359,7 +351,8 @@ class Database:
     ) -> None:
         """Persist room diff results for a specific property."""
         if all_records is None:
-            all_records = self.fetch_rooms(property_id=property_id, active_only=False)
+            all_records = self.fetch_rooms(property_id=property_id,
+                                           active_only=False)
 
         with self.connect() as conn:
             for room in diff.added:
@@ -518,7 +511,7 @@ class Database:
         with self.connect() as conn:
             cursor = conn.execute(
                 "SELECT area_url, content_hash, etag, last_modified, fetched_at FROM area_snapshots WHERE area_url = ?",
-                (area_url,),
+                (area_url, ),
             )
             row = cursor.fetchone()
             if not row:

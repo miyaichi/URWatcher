@@ -85,7 +85,8 @@ def test_runner_persists_added_and_removed(tmp_path):
         make_snapshot("B", [make_room("B", "201")]),
     ]
 
-    runner = build_runner(tmp_path, scraper=lambda db, url: (snapshots_round_one, True))
+    runner = build_runner(tmp_path,
+                          scraper=lambda db, url: (snapshots_round_one, True))
     runner.run()
 
     stored = runner.database.fetch_listings(active_only=True)
@@ -115,7 +116,8 @@ def test_runner_reports_availability_changes(tmp_path):
     initial_snapshot = [
         make_snapshot("A", [make_room("A", "101")], available_count=1),
     ]
-    runner = build_runner(tmp_path, scraper=lambda db, url: (initial_snapshot, True))
+    runner = build_runner(tmp_path,
+                          scraper=lambda db, url: (initial_snapshot, True))
     runner.run()
 
     subsequent_snapshot = [

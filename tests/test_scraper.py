@@ -12,6 +12,7 @@ from urwatcher.scraper import (
 
 
 class DummyResponse:
+
     def __init__(self, text: str, headers: Optional[dict] = None):
         self.text = text
         self.status_code = 200
@@ -36,7 +37,8 @@ def test_extract_area_links_finds_unique_urls():
       </body>
     </html>
     """
-    links = _extract_area_links(html, "https://www.ur-net.go.jp/chintai/kanto/tokyo/list/")
+    links = _extract_area_links(
+        html, "https://www.ur-net.go.jp/chintai/kanto/tokyo/list/")
     assert links == {
         "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/119.html",
         "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/120.html",
@@ -53,7 +55,8 @@ def test_parse_area_context_accepts_double_quotes():
       </head>
     </html>
     """
-    context = _parse_area_context(html, "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/119.html")
+    context = _parse_area_context(
+        html, "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/119.html")
     assert context.block == "kanto"
     assert context.prefecture_code == "13"
     assert context.prefecture_slug == "tokyo"
@@ -63,17 +66,22 @@ def test_parse_area_context_accepts_double_quotes():
 
 def test_build_listing_uses_nested_all_room_url():
     row = {
-        "shisya": "20",
-        "danchi": "225",
-        "shikibetu": "0",
-        "danchiNm": "Nested Danchi",
-        "place": "Test Address",
-        "room": [
-            {
-                "allRoomUrl": "/chintai/kanto/tokyo/20_2250.html",
-                "roomLinkPc": "/chintai/kanto/tokyo/20_2250_room.html?JKSS=0001",
-            }
-        ],
+        "shisya":
+        "20",
+        "danchi":
+        "225",
+        "shikibetu":
+        "0",
+        "danchiNm":
+        "Nested Danchi",
+        "place":
+        "Test Address",
+        "room": [{
+            "allRoomUrl":
+            "/chintai/kanto/tokyo/20_2250.html",
+            "roomLinkPc":
+            "/chintai/kanto/tokyo/20_2250_room.html?JKSS=0001",
+        }],
     }
 
     listing = _build_listing(row, room_count=0)
@@ -134,19 +142,26 @@ def test_scrape_properties_handles_list_page(monkeypatch, tmp_path):
                     "pageMax": "1",
                 },
             ]
-        return [
-            {
-                "id": "0001",
-                "roomNmMain": "1号棟",
-                "roomNmSub": "101号室",
-                "rent": "60,000円",
-                "commonfee": "3,000円",
-                "type": "2DK",
-                "floorspace": "45㎡",
-                "floor": "5階",
-                "roomLinkPc": "/chintai/kanto/tokyo/20_2250_room.html?JKSS=0001",
-            }
-        ]
+        return [{
+            "id":
+            "0001",
+            "roomNmMain":
+            "1号棟",
+            "roomNmSub":
+            "101号室",
+            "rent":
+            "60,000円",
+            "commonfee":
+            "3,000円",
+            "type":
+            "2DK",
+            "floorspace":
+            "45㎡",
+            "floor":
+            "5階",
+            "roomLinkPc":
+            "/chintai/kanto/tokyo/20_2250_room.html?JKSS=0001",
+        }]
 
     monkeypatch.setattr("requests.get", fake_get)
     monkeypatch.setattr("urwatcher.scraper.URApiClient.post", fake_post)
@@ -197,32 +212,37 @@ def test_scrape_properties_skips_when_area_unchanged(monkeypatch, tmp_path):
     def fake_post(self, endpoint, data):
         if endpoint.endswith("bukken_result/"):
             call_count["property"] += 1
-            return [
-                {
-                    "roomCount": "1",
-                    "shisya": "20",
-                    "danchi": "225",
-                    "shikibetu": "0",
-                    "danchiNm": "Test Danchi",
-                    "place": "Test Address",
-                    "allRoomUrl": "/chintai/kanto/tokyo/20_2250.html",
-                    "pageMax": "1",
-                }
-            ]
+            return [{
+                "roomCount": "1",
+                "shisya": "20",
+                "danchi": "225",
+                "shikibetu": "0",
+                "danchiNm": "Test Danchi",
+                "place": "Test Address",
+                "allRoomUrl": "/chintai/kanto/tokyo/20_2250.html",
+                "pageMax": "1",
+            }]
         call_count["room"] += 1
-        return [
-            {
-                "id": "0001",
-                "roomNmMain": "1号棟",
-                "roomNmSub": "101号室",
-                "rent": "60,000円",
-                "commonfee": "3,000円",
-                "type": "2DK",
-                "floorspace": "45㎡",
-                "floor": "5階",
-                "roomLinkPc": "/chintai/kanto/tokyo/20_2250_room.html?JKSS=0001",
-            }
-        ]
+        return [{
+            "id":
+            "0001",
+            "roomNmMain":
+            "1号棟",
+            "roomNmSub":
+            "101号室",
+            "rent":
+            "60,000円",
+            "commonfee":
+            "3,000円",
+            "type":
+            "2DK",
+            "floorspace":
+            "45㎡",
+            "floor":
+            "5階",
+            "roomLinkPc":
+            "/chintai/kanto/tokyo/20_2250_room.html?JKSS=0001",
+        }]
 
     monkeypatch.setattr("urwatcher.scraper.URApiClient.post", fake_post)
 
@@ -271,7 +291,8 @@ def test_scrape_properties_avoids_recursion(monkeypatch, tmp_path):
 
     database = Database(path=tmp_path / "avoid.db")
     database.initialize()
-    monkeypatch.setattr("urwatcher.scraper.URApiClient.post", lambda self, ep, data: [])
+    monkeypatch.setattr("urwatcher.scraper.URApiClient.post",
+                        lambda self, ep, data: [])
     monkeypatch.setattr(
         "urwatcher.scraper._parse_area_context",
         lambda text, url: (_ for _ in ()).throw(ValueError()),
@@ -287,7 +308,8 @@ def test_scrape_properties_handles_page_without_init(monkeypatch, tmp_path):
     url = "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/000.html"
     html = "<html><body><p>No data</p></body></html>"
 
-    monkeypatch.setattr("requests.get", lambda target, timeout: DummyResponse(html))
+    monkeypatch.setattr("requests.get",
+                        lambda target, timeout: DummyResponse(html))
 
     database = Database(path=tmp_path / "noinit.db")
     database.initialize()
@@ -310,7 +332,8 @@ def test_scrape_properties_handles_api_error(monkeypatch, tmp_path):
     </html>
     """
 
-    monkeypatch.setattr("requests.get", lambda target, timeout: DummyResponse(html))
+    monkeypatch.setattr("requests.get",
+                        lambda target, timeout: DummyResponse(html))
 
     def failing_post(self, endpoint, data):
         response = requests.Response()

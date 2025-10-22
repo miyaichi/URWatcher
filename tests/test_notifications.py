@@ -11,6 +11,7 @@ from urwatcher.notifications import (
 
 
 class DummyResponse:
+
     def raise_for_status(self):
         pass
 
@@ -24,7 +25,8 @@ def test_slack_notifier_posts(monkeypatch):
 
     monkeypatch.setattr("urwatcher.notifications.requests.post", fake_post)
 
-    notifier = SlackNotifier(webhook_url="https://hooks.slack.com/services/test")
+    notifier = SlackNotifier(
+        webhook_url="https://hooks.slack.com/services/test")
     notifier.send("hello slack")
 
     assert len(calls) == 1
@@ -36,7 +38,11 @@ def test_line_notifier_posts(monkeypatch):
     calls = []
 
     def fake_post(url, headers=None, data=None, timeout=None):
-        calls.append(SimpleNamespace(url=url, headers=headers, data=data, timeout=timeout))
+        calls.append(
+            SimpleNamespace(url=url,
+                            headers=headers,
+                            data=data,
+                            timeout=timeout))
         return DummyResponse()
 
     monkeypatch.setattr("urwatcher.notifications.requests.post", fake_post)
@@ -54,14 +60,17 @@ def test_composite_notifier_logs_and_continues(monkeypatch, caplog):
     success = []
 
     class SuccessNotifier:
+
         def send(self, message: str) -> None:
             success.append(message)
 
     class FailingNotifier:
+
         def send(self, message: str) -> None:
             raise RuntimeError("boom")
 
-    composite = CompositeNotifier(notifiers=[FailingNotifier(), SuccessNotifier()])
+    composite = CompositeNotifier(
+        notifiers=[FailingNotifier(), SuccessNotifier()])
     with caplog.at_level("ERROR"):
         composite.send("payload")
 
@@ -162,17 +171,20 @@ def test_format_notifications_covers_all_paths():
             unchanged=[],
         ),
         room_diffs={
-            "P1": DiffResult(
+            "P1":
+            DiffResult(
                 added=[new_property_room],
                 removed=[],
                 unchanged=[],
             ),
-            "P2": DiffResult(
+            "P2":
+            DiffResult(
                 added=[],
                 removed=[removed_property_room],
                 unchanged=[],
             ),
-            "P3": DiffResult(
+            "P3":
+            DiffResult(
                 added=[existing_room_added],
                 removed=[existing_room_removed],
                 unchanged=[],
@@ -230,7 +242,8 @@ def test_build_notifier_from_env(monkeypatch):
 
     assert build_notifier_from_env() is None
 
-    monkeypatch.setenv("SLACK_WEBHOOK", "https://hooks.slack.com/services/test")
+    monkeypatch.setenv("SLACK_WEBHOOK",
+                       "https://hooks.slack.com/services/test")
     monkeypatch.setenv("LINE_NOTIFY_TOKEN", "token123")
 
     composite = build_notifier_from_env()

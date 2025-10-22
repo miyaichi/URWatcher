@@ -27,8 +27,7 @@ def _diff_items(
             unchanged.append(item)
 
     removed = [
-        record
-        for item_id, record in previous_items.items()
+        record for item_id, record in previous_items.items()
         if item_id not in new_map
     ]
 
@@ -40,7 +39,9 @@ def diff_listings(
     previous_listings: Dict[str, ListingRecord],
 ) -> DiffResult[Listing, ListingRecord]:
     """Compute added, removed, and unchanged listings."""
-    return _diff_items(new_listings, previous_listings, key_fn=lambda item: item.property_id)
+    return _diff_items(new_listings,
+                       previous_listings,
+                       key_fn=lambda item: item.property_id)
 
 
 def diff_rooms(
@@ -48,4 +49,6 @@ def diff_rooms(
     previous_rooms: Dict[str, RoomRecord],
 ) -> DiffResult[Room, RoomRecord]:
     """Compute added, removed, and unchanged rooms."""
-    return _diff_items(new_rooms, previous_rooms, key_fn=lambda item: item.room_id)
+    return _diff_items(new_rooms,
+                       previous_rooms,
+                       key_fn=lambda item: item.room_id)

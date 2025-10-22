@@ -32,8 +32,7 @@ class URWatcherRunner:
     database: Database
     target_url: str
     scraper: Callable[[Database, str], List[PropertySnapshot]] = field(
-        default_factory=lambda: scrape_properties
-    )
+        default_factory=lambda: scrape_properties)
 
     def init(self) -> None:
         """Initialize required persistence structures."""
@@ -52,9 +51,8 @@ class URWatcherRunner:
                 snapshots, authoritative = scrape_result
             else:
                 snapshots = scrape_result  # type: ignore[assignment]
-            logger.info(
-                "Scraped %d properties from %s", len(snapshots), self.target_url
-            )
+            logger.info("Scraped %d properties from %s", len(snapshots),
+                        self.target_url)
         except Exception as exc:
             logger.exception("Scraping failed: %s", exc)
             self.database.add_run(
@@ -68,12 +66,15 @@ class URWatcherRunner:
             logger.info(
                 "Scraper reported no data changes; skipping diff and leaving state unchanged."
             )
-            empty_diff: DiffResult[Listing, ListingRecord] = DiffResult(
-                added=[], removed=[], unchanged=[]
-            )
+            empty_diff: DiffResult[Listing,
+                                   ListingRecord] = DiffResult(added=[],
+                                                               removed=[],
+                                                               unchanged=[])
             note = _format_note(empty_diff, {})
             status = "success"
-            self.database.add_run(executed_at=executed_at, status=status, notes=note)
+            self.database.add_run(executed_at=executed_at,
+                                  status=status,
+                                  notes=note)
             return RunSummary(
                 executed_at=executed_at,
                 property_diff=empty_diff,
@@ -84,7 +85,8 @@ class URWatcherRunner:
         current_listings = [snapshot.listing for snapshot in snapshots]
         listing_records = self.database.fetch_listings(active_only=False)
         previous_active = {
-            pid: record for pid, record in listing_records.items() if record.active
+            pid: record
+            for pid, record in listing_records.items() if record.active
         }
         listing_diff = diff_listings(current_listings, previous_active)
 
@@ -96,11 +98,9 @@ class URWatcherRunner:
         for snapshot in snapshots:
             property_id = snapshot.listing.property_id
             existing_listing = listing_records.get(property_id)
-            if (
-                existing_listing
-                and existing_listing.active
-                and existing_listing.available_room_count != snapshot.listing.available_room_count
-            ):
+            if (existing_listing and existing_listing.active
+                    and existing_listing.available_room_count
+                    != snapshot.listing.available_room_count):
                 availability_changes[property_id] = AvailabilityChange(
                     property_id=property_id,
                     property_name=snapshot.listing.name,
@@ -108,13 +108,11 @@ class URWatcherRunner:
                     previous_count=existing_listing.available_room_count,
                     current_count=snapshot.listing.available_room_count,
                 )
-            existing_rooms = self.database.fetch_rooms(
-                property_id=property_id, active_only=False
-            )
+            existing_rooms = self.database.fetch_rooms(property_id=property_id,
+                                                       active_only=False)
             active_rooms = {
                 room_id: record
-                for room_id, record in existing_rooms.items()
-                if record.active
+                for room_id, record in existing_rooms.items() if record.active
             }
             room_diff = diff_rooms(snapshot.rooms, active_rooms)
             room_diffs[property_id] = room_diff
@@ -131,9 +129,8 @@ class URWatcherRunner:
 
         for removed_listing in listing_diff.removed:
             property_id = removed_listing.property_id
-            existing_rooms = self.database.fetch_rooms(
-                property_id=property_id, active_only=False
-            )
+            existing_rooms = self.database.fetch_rooms(property_id=property_id,
+                                                       active_only=False)
             if existing_rooms:
                 removal_diff = DiffResult[Room, RoomRecord](
                     added=[],
@@ -174,7 +171,9 @@ class URWatcherRunner:
             note = _format_note(listing_diff, room_diffs)
             status = "success"
 
-        self.database.add_run(executed_at=executed_at, status=status, notes=note)
+        self.database.add_run(executed_at=executed_at,
+                              status=status,
+                              notes=note)
         logger.info("Run recorded at %s", executed_at)
         return RunSummary(
             executed_at=executed_at,
@@ -196,5 +195,4 @@ def _format_note(
     return (
         f"{prefix}"
         f"properties(+{len(listing_diff.added)} / -{len(listing_diff.removed)} / ={len(listing_diff.unchanged)}) "
-        f"rooms(+{rooms_added} / -{rooms_removed} / ={rooms_unchanged})"
-    )
+        f"rooms(+{rooms_added} / -{rooms_removed} / ={rooms_unchanged})")

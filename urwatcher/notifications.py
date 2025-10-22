@@ -77,7 +77,8 @@ class CompositeNotifier:
             try:
                 notifier.send(message)
             except Exception:  # noqa: BLE001
-                logger.exception("Failed to deliver notification via %s", type(notifier).__name__)
+                logger.exception("Failed to deliver notification via %s",
+                                 type(notifier).__name__)
 
 
 def build_notifier_from_env() -> CompositeNotifier | None:
@@ -100,11 +101,18 @@ def build_notifier_from_env() -> CompositeNotifier | None:
 def format_notifications(summary: RunSummary) -> List[str]:
     """Render diff results into human-friendly notification payloads."""
     messages: List[str] = []
-    added_ids = {listing.property_id for listing in summary.property_diff.added}
-    removed_ids = {record.property_id for record in summary.property_diff.removed}
+    added_ids = {
+        listing.property_id
+        for listing in summary.property_diff.added
+    }
+    removed_ids = {
+        record.property_id
+        for record in summary.property_diff.removed
+    }
 
     for listing in summary.property_diff.added:
-        room_lines = _format_room_additions(summary.room_diffs.get(listing.property_id))
+        room_lines = _format_room_additions(
+            summary.room_diffs.get(listing.property_id))
         message_lines = [
             ":new: 新しい物件が追加されました",
             f"物件名: {listing.name}",
@@ -156,16 +164,14 @@ def format_notifications(summary: RunSummary) -> List[str]:
             message_lines.append(f"現在の対象空室数: {change.current_count}")
         else:
             message_lines.append(
-                f"対象空室数: {previous} -> {change.current_count}"
-            )
+                f"対象空室数: {previous} -> {change.current_count}")
         messages.append("\n".join(message_lines))
 
     return messages
 
 
 def _format_room_additions(
-    room_diff: DiffResult[Room, RoomRecord] | None,
-) -> List[str]:
+    room_diff: DiffResult[Room, RoomRecord] | None, ) -> List[str]:
     if not room_diff or not room_diff.added:
         return []
     lines = ["空室情報:"]
@@ -201,8 +207,7 @@ def _build_room_message(
 
 
 def _summarize_room_entries(
-    rooms: Iterable[Room] | Iterable[RoomRecord],
-) -> List[str]:
+    rooms: Iterable[Room] | Iterable[RoomRecord], ) -> List[str]:
     summaries: List[str] = []
     for idx, room in enumerate(rooms):
         if idx >= MAX_ROOMS_PER_MESSAGE:
