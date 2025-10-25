@@ -78,6 +78,17 @@ def test_composite_notifier_logs_and_continues(monkeypatch, caplog):
     assert "Failed to deliver notification" in caplog.text
 
 
+def test_build_notifier_from_env_ignores_invalid_slack(monkeypatch, caplog):
+    monkeypatch.setenv("SLACK_WEBHOOK", "dummy")
+    monkeypatch.delenv("LINE_NOTIFY_TOKEN", raising=False)
+
+    with caplog.at_level("WARNING"):
+        notifier = build_notifier_from_env()
+
+    assert notifier is None
+    assert "Ignoring invalid Slack webhook URL" in caplog.text
+
+
 def test_format_notifications_covers_all_paths():
     added_listing = Listing(
         property_id="P1",

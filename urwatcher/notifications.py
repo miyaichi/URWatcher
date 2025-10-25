@@ -6,6 +6,7 @@ import logging
 import os
 from dataclasses import dataclass
 from typing import Iterable, List, Protocol
+from urllib.parse import urlparse
 
 import requests
 
@@ -23,6 +24,12 @@ logger = logging.getLogger(__name__)
 
 LINE_NOTIFY_ENDPOINT = "https://notify-api.line.me/api/notify"
 MAX_ROOMS_PER_MESSAGE = 5
+
+
+def _is_valid_webhook_url(url: str) -> bool:
+    """Return True when URL has an HTTP(S) scheme and host."""
+    parsed = urlparse(url)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
 
 
 class Notifier(Protocol):
@@ -87,7 +94,11 @@ def build_notifier_from_env() -> CompositeNotifier | None:
 
     slack_webhook = (os.getenv("SLACK_WEBHOOK") or "").strip()
     if slack_webhook:
-        notifiers.append(SlackNotifier(webhook_url=slack_webhook))
+        if _is_valid_webhook_url(slack_webhook):
+            notifiers.append(SlackNotifier(webhook_url=slack_webhook))
+        else:
+            logger.warning("Ignoring invalid Slack webhook URL: %s",
+                           slack_webhook)
 
     line_token = (os.getenv("LINE_NOTIFY_TOKEN") or "").strip()
     if line_token:
