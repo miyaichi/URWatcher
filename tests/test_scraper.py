@@ -190,7 +190,7 @@ def test_scrape_properties_handles_list_page(monkeypatch, tmp_path):
     assert zero_snapshot.rooms == []
 
 
-def test_scrape_properties_skips_when_area_unchanged(monkeypatch, tmp_path):
+def test_scrape_properties_rechecks_when_area_unchanged(monkeypatch, tmp_path):
     area_url = "https://www.ur-net.go.jp/chintai/kanto/tokyo/area/119.html"
 
     html_area = """
@@ -256,12 +256,13 @@ def test_scrape_properties_skips_when_area_unchanged(monkeypatch, tmp_path):
     assert call_count == {"property": 1, "room": 1}
     assert authoritative_first is True
 
-    # Second crawl should perform only quick probe (no room fetch)
+    # Second crawl should still fetch properties/rooms to emit diffs
     second, authoritative_second = scrape_properties(database, area_url)
-    assert second == []
+    assert len(second) == 1
+    assert second[0].listing.address == "Test Address"
     assert call_count["property"] == 2
-    assert call_count["room"] == 1
-    assert authoritative_second is False
+    assert call_count["room"] == 2
+    assert authoritative_second is True
 
 
 def test_scrape_properties_avoids_recursion(monkeypatch, tmp_path):

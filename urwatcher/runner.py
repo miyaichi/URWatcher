@@ -146,6 +146,12 @@ class URWatcherRunner:
                         diff=removal_diff,
                         all_records=existing_rooms,
                     )
+            else:
+                room_diffs[property_id] = DiffResult[Room, RoomRecord](
+                    added=[],
+                    removed=[],
+                    unchanged=[],
+                )
 
         if dry_run:
             logger.info(

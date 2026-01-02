@@ -175,14 +175,15 @@ def scrape_properties(
 
     if snapshot and not area_changed:
         logger.info(
-            "Area page %s unchanged since %s; performing lightweight property probe",
+            "Area page %s unchanged since %s; running probe before full fetch",
             target_url,
             snapshot.fetched_at,
         )
-        _quick_property_probe(client)
-        database.upsert_area_snapshot(target_url, content_hash, etag,
-                                      last_modified)
-        return [], False
+        probe_count = _quick_property_probe(client)
+        if probe_count == 0:
+            logger.info(
+                "Probe returned zero properties; performing full fetch to confirm removals"
+            )
 
     snapshots: List[PropertySnapshot] = []
     page_index = 0
@@ -297,13 +298,20 @@ def _hash_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def _quick_property_probe(client: URApiClient) -> None:
-    payload = client.property_payload(page_index=0, page_size=10)
-    rows = client.post("bukken/result/bukken_result/", payload)
-    logger.info(
-        "Lightweight probe fetched %d property rows (page 0)",
-        len(rows),
-    )
+def _quick_property_probe(client: URApiClient) -> int:
+    """Perform a shallow fetch to verify API responsiveness."""
+    try:
+        payload = client.property_payload(page_index=0, page_size=10)
+        rows = client.post("bukken/result/bukken_result/", payload)
+        logger.info(
+            "Lightweight probe fetched %d property rows (page 0)",
+            len(rows),
+        )
+        return len(rows)
+    except Exception:
+        logger.warning("Lightweight probe failed; falling back to full fetch",
+                       exc_info=True)
+        return -1
 
 
 def _resolve_listing_url(row: dict) -> str:
